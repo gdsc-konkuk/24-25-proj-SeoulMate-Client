@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		804642E22D9689D000D95280 /* GoogleMaps in Frameworks */ = {isa = PBXBuildFile; productRef = 804642E12D9689D000D95280 /* GoogleMaps */; };
 		804CF0382D9565EB0050AE28 /* GoogleSignIn in Frameworks */ = {isa = PBXBuildFile; productRef = 804CF0372D9565EB0050AE28 /* GoogleSignIn */; };
 		80F0FA4E2D956F1D00E95E55 /* SnapKit in Frameworks */ = {isa = PBXBuildFile; productRef = 80F0FA4D2D956F1D00E95E55 /* SnapKit */; };
 		80F0FA542D957D1400E95E55 /* Alamofire in Frameworks */ = {isa = PBXBuildFile; productRef = 80F0FA532D957D1400E95E55 /* Alamofire */; };
@@ -58,6 +59,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				804642E22D9689D000D95280 /* GoogleMaps in Frameworks */,
 				80F0FA542D957D1400E95E55 /* Alamofire in Frameworks */,
 				804CF0382D9565EB0050AE28 /* GoogleSignIn in Frameworks */,
 				80F0FA4E2D956F1D00E95E55 /* SnapKit in Frameworks */,
@@ -115,6 +117,7 @@
 				804CF0372D9565EB0050AE28 /* GoogleSignIn */,
 				80F0FA4D2D956F1D00E95E55 /* SnapKit */,
 				80F0FA532D957D1400E95E55 /* Alamofire */,
+				804642E12D9689D000D95280 /* GoogleMaps */,
 			);
 			productName = SeoulMate;
 			productReference = 804CEFB12D9564740050AE28 /* SeoulMate.app */;
@@ -175,6 +178,7 @@
 				804CF0362D9565EB0050AE28 /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */,
 				80F0FA4C2D956F1D00E95E55 /* XCRemoteSwiftPackageReference "SnapKit" */,
 				80F0FA522D957D1400E95E55 /* XCRemoteSwiftPackageReference "Alamofire" */,
+				804642E02D9689D000D95280 /* XCRemoteSwiftPackageReference "ios-maps-sdk" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 804CEFB22D9564740050AE28 /* Products */;
@@ -232,6 +236,8 @@
 /* Begin XCBuildConfiguration section */
 		804CEFDB2D9564760050AE28 /* Debug */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReferenceAnchor = 804CEFB32D9564740050AE28 /* SeoulMate */;
+			baseConfigurationReferenceRelativePath = ApplicationSM/Resource/Config.xcconfig;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
@@ -264,6 +270,8 @@
 		};
 		804CEFDC2D9564760050AE28 /* Release */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReferenceAnchor = 804CEFB32D9564740050AE28 /* SeoulMate */;
+			baseConfigurationReferenceRelativePath = ApplicationSM/Resource/Config.xcconfig;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
@@ -492,6 +500,14 @@
 /* End XCConfigurationList section */
 
 /* Begin XCRemoteSwiftPackageReference section */
+		804642E02D9689D000D95280 /* XCRemoteSwiftPackageReference "ios-maps-sdk" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/googlemaps/ios-maps-sdk";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 9.4.0;
+			};
+		};
 		804CF0362D9565EB0050AE28 /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/google/GoogleSignIn-iOS";
@@ -519,6 +535,11 @@
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
+		804642E12D9689D000D95280 /* GoogleMaps */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 804642E02D9689D000D95280 /* XCRemoteSwiftPackageReference "ios-maps-sdk" */;
+			productName = GoogleMaps;
+		};
 		804CF0372D9565EB0050AE28 /* GoogleSignIn */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = 804CF0362D9565EB0050AE28 /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */;
