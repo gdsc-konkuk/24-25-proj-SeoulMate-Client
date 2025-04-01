@@ -54,12 +54,10 @@ final class LoginViewController: UIViewController {
   
   // MARK: - Initialization
   
-  init(
-    loginUseCase: LoginUseCaseProtocol,
-    googleAuthService: GoogleAuthServiceProtocol
-  ) {
-    self.loginUseCase = loginUseCase
-    self.googleAuthService = googleAuthService
+  init() {
+    // DIContainer에서 의존성 해결
+    self.loginUseCase = DIContainer.shared.resolve(type: LoginUseCaseProtocol.self)!
+    self.googleAuthService = DIContainer.shared.resolve(type: GoogleAuthServiceProtocol.self)!
     super.init(nibName: nil, bundle: nil)
   }
   

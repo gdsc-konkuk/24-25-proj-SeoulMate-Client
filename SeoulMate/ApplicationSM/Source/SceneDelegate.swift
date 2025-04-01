@@ -13,54 +13,72 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
   var window: UIWindow?
   private var cancellables = Set<AnyCancellable>()
   
-  // DI 컨테이너
-  private lazy var tokenStorage: TokenStorageProtocol = {
-    return KeychainTokenStorage()
-  }()
-  
-  private lazy var networkService: NetworkServiceProtocol = {
-    return NetworkService(tokenStorage: tokenStorage)
-  }()
-  
-  private lazy var authRepository: AuthRepositoryProtocol = {
-    // Config.xcconfig에서 설정한 BASE_URL
-    // TODO: Base URL에 맞게 수정
-    let baseURL = Bundle.main.infoDictionary?["BASE_URL"] as? String ?? "https://api.seoulmate.com"
-    return AuthRepository(networkService: networkService, baseURL: baseURL)
-  }()
-  
-  private lazy var loginUseCase: LoginUseCaseProtocol = {
-    return LoginUseCase(authRepository: authRepository, tokenStorage: tokenStorage)
-  }()
-  
-  private lazy var googleAuthService: GoogleAuthServiceProtocol = {
-    return GoogleAuthService()
-  }()
-  
-  func scene(_ scene: UIScene, willConnectTo session: UISceneSession, options connectionOptions: UIScene.ConnectionOptions) {
+  func scene(
+    _ scene: UIScene,
+    willConnectTo session: UISceneSession,
+    options connectionOptions: UIScene.ConnectionOptions
+  ) {
     guard let windowScene = (scene as? UIWindowScene) else { return }
+    
+    // DIContainer에 의존성 등록
+    registerDependencies()
     
     let window = UIWindow(windowScene: windowScene)
     self.window = window
     
-//    // 토큰 유효성 검사
-//    if tokenStorage.isTokenValid() {
-//      // 토큰이 유효하다면 TabBarController로 이동
-//      window.rootViewController = TabBarController()
-//    } else if let refreshToken = tokenStorage.getRefreshToken() {
-//      // 토큰 갱신 시도
-//      refreshTokenAndNavigate(window: window, refreshToken: refreshToken)
-//    } else {
-//      // 로그인 화면으로 이동
-//      let loginViewController = LoginViewController(
-//        loginUseCase: loginUseCase,
-//        googleAuthService: googleAuthService
-//      )
-//      window.rootViewController = loginViewController
-//    }
+    // 현재는 토큰 검증 로직이 주석 처리되어 있으므로 TabBarController로 바로 이동
     window.rootViewController = TabBarController()
     
+    // 토큰 유효성 검사 코드 (필요시 주석 해제)
+    /*
+    let tokenStorage = DIContainer.shared.resolve(type: TokenStorageProtocol.self)!
+    
+    if tokenStorage.isTokenValid() {
+       토큰이 유효하다면 TabBarController로 이동
+      window.rootViewController = TabBarController()
+    } else if let refreshToken = tokenStorage.getRefreshToken() {
+       토큰 갱신 시도
+      refreshTokenAndNavigate(window: window, refreshToken: refreshToken)
+    } else {
+       로그인 화면으로 이동
+      window.rootViewController = LoginViewController()
+    }
+    */
+    
     window.makeKeyAndVisible()
+  }
+  
+  private func registerDependencies() {
+    // TokenStorage
+    DIContainer.shared.register(type: TokenStorageProtocol.self) { _ in
+      return KeychainTokenStorage()
+    }
+    
+    // NetworkService
+    DIContainer.shared.register(type: NetworkServiceProtocol.self) { container in
+      let tokenStorage = container.resolve(type: TokenStorageProtocol.self)!
+      return NetworkService(tokenStorage: tokenStorage)
+    }
+    
+    // AuthRepository
+    DIContainer.shared.register(type: AuthRepositoryProtocol.self) { container in
+      let networkService = container.resolve(type: NetworkServiceProtocol.self)!
+      // Config.xcconfig에서 설정한 BASE_URL
+      let baseURL = Bundle.main.infoDictionary?["BASE_URL"] as? String ?? "https://api.seoulmate.com"
+      return AuthRepository(networkService: networkService, baseURL: baseURL)
+    }
+    
+    // LoginUseCase
+    DIContainer.shared.register(type: LoginUseCaseProtocol.self) { container in
+      let authRepository = container.resolve(type: AuthRepositoryProtocol.self)!
+      let tokenStorage = container.resolve(type: TokenStorageProtocol.self)!
+      return LoginUseCase(authRepository: authRepository, tokenStorage: tokenStorage)
+    }
+    
+    // GoogleAuthService
+    DIContainer.shared.register(type: GoogleAuthServiceProtocol.self) { _ in
+      return GoogleAuthService()
+    }
   }
   
   private func refreshTokenAndNavigate(window: UIWindow, refreshToken: String) {
@@ -74,22 +92,20 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
     
     window.rootViewController = loadingViewController
     
+    let loginUseCase = DIContainer.shared.resolve(type: LoginUseCaseProtocol.self)!
+    
     // 토큰 갱신 요청
     loginUseCase.executeTokenRefresh()
       .receive(on: DispatchQueue.main)
       .sink(
-        receiveCompletion: { [weak self] completion in
+        receiveCompletion: { completion in
           switch completion {
           case .finished:
             // 성공적으로 토큰 갱신 시 TabBarController로 이동
             window.rootViewController = TabBarController()
           case .failure:
             // 실패 시 로그인 화면으로 이동
-            guard let self = self else { return }
-            window.rootViewController = LoginViewController(
-              loginUseCase: self.loginUseCase,
-              googleAuthService: self.googleAuthService
-            )
+            window.rootViewController = LoginViewController()
           }
         },
         receiveValue: { _ in }
