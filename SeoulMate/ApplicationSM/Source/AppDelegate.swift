@@ -16,6 +16,13 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     _ application: UIApplication,
     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
   ) -> Bool {
+    print(Bundle.main.object(forInfoDictionaryKey: "GOOGLE_MAP_API_KEY")!)
+    if let apiKey = Bundle.main.object(forInfoDictionaryKey: "GOOGLE_MAP_API_KEY") as? String {
+      GMSServices.provideAPIKey(apiKey)
+    } else {
+      // TODO: Alert창
+      print("⚠️ 경고: Google Maps API 키가 설정되지 않았습니다.")
+    }
     return true
   }
   

@@ -43,21 +43,22 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
     let window = UIWindow(windowScene: windowScene)
     self.window = window
     
-    // 토큰 유효성 검사
-    if tokenStorage.isTokenValid() {
-      // 토큰이 유효하다면 TabBarController로 이동
-      window.rootViewController = TabBarController()
-    } else if let refreshToken = tokenStorage.getRefreshToken() {
-      // 토큰 갱신 시도
-      refreshTokenAndNavigate(window: window, refreshToken: refreshToken)
-    } else {
-      // 로그인 화면으로 이동
-      let loginViewController = LoginViewController(
-        loginUseCase: loginUseCase,
-        googleAuthService: googleAuthService
-      )
-      window.rootViewController = loginViewController
-    }
+//    // 토큰 유효성 검사
+//    if tokenStorage.isTokenValid() {
+//      // 토큰이 유효하다면 TabBarController로 이동
+//      window.rootViewController = TabBarController()
+//    } else if let refreshToken = tokenStorage.getRefreshToken() {
+//      // 토큰 갱신 시도
+//      refreshTokenAndNavigate(window: window, refreshToken: refreshToken)
+//    } else {
+//      // 로그인 화면으로 이동
+//      let loginViewController = LoginViewController(
+//        loginUseCase: loginUseCase,
+//        googleAuthService: googleAuthService
+//      )
+//      window.rootViewController = loginViewController
+//    }
+    window.rootViewController = TabBarController()
     
     window.makeKeyAndVisible()
   }
