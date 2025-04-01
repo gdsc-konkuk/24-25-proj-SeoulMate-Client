@@ -8,6 +8,7 @@
 import UIKit
 import GoogleSignIn
 import GoogleMaps
+import GooglePlaces
 
 @main
 class AppDelegate: UIResponder, UIApplicationDelegate {
@@ -19,9 +20,10 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     print(Bundle.main.object(forInfoDictionaryKey: "GOOGLE_MAP_API_KEY")!)
     if let apiKey = Bundle.main.object(forInfoDictionaryKey: "GOOGLE_MAP_API_KEY") as? String {
       GMSServices.provideAPIKey(apiKey)
+      GMSPlacesClient.provideAPIKey(apiKey)
     } else {
       // TODO: Alert창
-      print("⚠️ 경고: Google Maps API 키가 설정되지 않았습니다.")
+      Logger.log(message: "⚠️ 경고: Google Maps API 키가 설정되지 않았습니다.")
     }
     return true
   }

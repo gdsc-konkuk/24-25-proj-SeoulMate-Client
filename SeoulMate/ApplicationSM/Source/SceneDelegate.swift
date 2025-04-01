@@ -31,19 +31,19 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
     
     // 토큰 유효성 검사 코드 (필요시 주석 해제)
     /*
-    let tokenStorage = DIContainer.shared.resolve(type: TokenStorageProtocol.self)!
-    
-    if tokenStorage.isTokenValid() {
-       토큰이 유효하다면 TabBarController로 이동
-      window.rootViewController = TabBarController()
-    } else if let refreshToken = tokenStorage.getRefreshToken() {
-       토큰 갱신 시도
-      refreshTokenAndNavigate(window: window, refreshToken: refreshToken)
-    } else {
-       로그인 화면으로 이동
-      window.rootViewController = LoginViewController()
-    }
-    */
+     let tokenStorage = DIContainer.shared.resolve(type: TokenStorageProtocol.self)!
+     
+     if tokenStorage.isTokenValid() {
+     토큰이 유효하다면 TabBarController로 이동
+     window.rootViewController = TabBarController()
+     } else if let refreshToken = tokenStorage.getRefreshToken() {
+     토큰 갱신 시도
+     refreshTokenAndNavigate(window: window, refreshToken: refreshToken)
+     } else {
+     로그인 화면으로 이동
+     window.rootViewController = LoginViewController()
+     }
+     */
     
     window.makeKeyAndVisible()
   }
@@ -78,6 +78,30 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
     // GoogleAuthService
     DIContainer.shared.register(type: GoogleAuthServiceProtocol.self) { _ in
       return GoogleAuthService()
+    }
+    
+    // PlacesService
+    DIContainer.shared.register(type: PlacesServiceProtocol.self) { _ in
+      return PlacesService()
+    }
+    
+    // PlaceImageNetworkService
+    DIContainer.shared.register(type: PlaceImageNetworkServiceProtocol.self) { container in
+      let networkService = container.resolve(type: NetworkServiceProtocol.self)!
+      let placesService = container.resolve(type: PlacesServiceProtocol.self)!
+      return PlaceImageNetworkService(networkService: networkService, placesService: placesService)
+    }
+    
+    // PlaceImageRepository
+    DIContainer.shared.register(type: PlaceImageRepositoryProtocol.self) { container in
+      let networkService = container.resolve(type: PlaceImageNetworkServiceProtocol.self)!
+      return PlaceImageRepository(networkService: networkService)
+    }
+    
+    // FetchPlaceImagesUseCase
+    DIContainer.shared.register(type: FetchPlaceImagesUseCaseProtocol.self) { container in
+      let repository = container.resolve(type: PlaceImageRepositoryProtocol.self)!
+      return FetchPlaceImagesUseCase(repository: repository)
     }
   }
   
