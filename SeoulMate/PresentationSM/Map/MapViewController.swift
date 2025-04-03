@@ -19,7 +19,6 @@ final class MapViewController: UIViewController {
   private let locationManager = CLLocationManager()
   private var currentLocation: CLLocation?
   private var mapView: GMSMapView!
-  private var markers: [GMSMarker] = []
   private var selectedMarker: GMSMarker?
   private var placesClient: GMSPlacesClient!
   
@@ -63,20 +62,6 @@ final class MapViewController: UIViewController {
     return imageView
   }()
   
-  private lazy var locationButton: UIButton = {
-    let button = UIButton(type: .system)
-    button.setImage(UIImage(systemName: "location.circle.fill"), for: .normal)
-    button.backgroundColor = .white
-    button.tintColor = .systemBlue
-    button.layer.cornerRadius = 25
-    button.layer.shadowColor = UIColor.black.cgColor
-    button.layer.shadowOpacity = 0.1
-    button.layer.shadowOffset = CGSize(width: 0, height: 2)
-    button.layer.shadowRadius = 4
-    button.addTarget(self, action: #selector(locationButtonTapped), for: .touchUpInside)
-    return button
-  }()
-  
   private lazy var carouselView: PlaceCardCarouselView = {
     let view = PlaceCardCarouselView()
     view.isHidden = true
@@ -99,14 +84,10 @@ final class MapViewController: UIViewController {
     setupMapView()
     setupSearchBar()
     setupSearchResultsTableView()
-    setupLocationButton()
     setupCarouselView()
     setupLocationManager()
     
-    // 샘플 마커 추가
-    addPlaceMarkers()
-    
-    // 캐러셀 초기 설정 (빈 카드 5개로 시작)
+    // TODO: 수정 필요 [캐러셀 초기 설정 (빈 카드 5개로 시작)]
     updateCarousel(with: [])
   }
   
@@ -117,10 +98,10 @@ final class MapViewController: UIViewController {
     let camera = GMSCameraPosition.camera(withTarget: seoulCoordinate, zoom: 14)
     
     // 지도 생성
-    mapView = GMSMapView(frame: .zero, camera: camera)
+    mapView = GMSMapView()
     mapView.delegate = self
     mapView.isMyLocationEnabled = true
-    mapView.settings.myLocationButton = false // 커스텀 버튼 사용
+    mapView.settings.myLocationButton = true
     
     view.addSubview(mapView)
     
@@ -192,17 +173,6 @@ final class MapViewController: UIViewController {
     }
   }
   
-  private func setupLocationButton() {
-    view.addSubview(locationButton)
-    
-    // SnapKit을 사용한 위치 버튼 제약 조건
-    locationButton.snp.makeConstraints { make in
-      make.trailing.equalToSuperview().offset(-16)
-      make.bottom.equalTo(view.safeAreaLayoutGuide.snp.bottom).offset(-100) // 캐러셀 위에 위치
-      make.width.height.equalTo(50)
-    }
-  }
-  
   private func setupCarouselView() {
     view.addSubview(carouselView)
     
@@ -217,16 +187,22 @@ final class MapViewController: UIViewController {
   private func setupLocationManager() {
     locationManager.delegate = self
     locationManager.desiredAccuracy = kCLLocationAccuracyBest
-    checkLocationAuthorization()
-  }
-  
-  private func addPlaceMarkers() {
-    markers.forEach { $0.map = nil }
-    markers.removeAll()
+    
+    switch locationManager.authorizationStatus {
+    case .authorizedWhenInUse, .authorizedAlways:
+      locationManager.startUpdatingLocation()
+    case .notDetermined:
+      locationManager.requestWhenInUseAuthorization()
+    case .denied, .restricted:
+      // 위치 권한이 없는 경우 서울 좌표로 초기화
+      setDefaultMapCamera()
+      showLocationAccessAlert()
+    @unknown default:
+      setDefaultMapCamera()
+    }
   }
   
   // MARK: - Actions
-  
   @objc private func locationButtonTapped() {
     if let location = currentLocation {
       let camera = GMSCameraPosition.camera(
@@ -251,17 +227,10 @@ final class MapViewController: UIViewController {
   }
   
   // MARK: - Google Places Autocomplete
-  
   private func performAutocompleteSearch(_ query: String) {
     // 서울 지역으로 제한하는 필터 (선택적)
     let filter = GMSAutocompleteFilter()
     filter.countries = ["KR"]
-    
-    // 서울 중심으로 검색 반경 설정 (선택적)
-    let bounds = GMSCoordinateBounds(
-      coordinate: CLLocationCoordinate2D(latitude: 37.4, longitude: 126.8),
-      coordinate: CLLocationCoordinate2D(latitude: 37.7, longitude: 127.2)
-    )
     
     // 자동완성 검색 요청
     placesClient.findAutocompletePredictions(
@@ -308,11 +277,15 @@ final class MapViewController: UIViewController {
   private func fetchPlaceDetails(placeID: String) {
     let fields: GMSPlaceField = [.name, .formattedAddress, .coordinate, .photos]
     
-    placesClient.fetchPlace(fromPlaceID: placeID, placeFields: fields, sessionToken: nil) { [weak self] (place, error) in
+    placesClient.fetchPlace(
+      fromPlaceID: placeID,
+      placeFields: fields,
+      sessionToken: nil
+    ) { [weak self] (place, error) in
       guard let self = self else { return }
       
       if let error = error {
-        print("장소 상세정보 조회 오류: \(error.localizedDescription)")
+        Logger.log(message: "장소 상세정보 조회 오류: \(error.localizedDescription)")
         return
       }
       
@@ -322,7 +295,7 @@ final class MapViewController: UIViewController {
           id: place.placeID ?? UUID().uuidString,
           name: place.name ?? "알 수 없는 장소",
           address: place.formattedAddress ?? "",
-          imageURL: nil, // 초기값은 nil로 설정
+          imageURL: nil,
           distance: self.calculateDistance(to: place.coordinate),
           coordinate: (place.coordinate.latitude, place.coordinate.longitude)
         )
@@ -378,6 +351,11 @@ final class MapViewController: UIViewController {
     }
   }
   
+  private func setDefaultMapCamera() {
+    let camera = GMSCameraPosition.camera(withTarget: seoulCoordinate, zoom: 14)
+    mapView.camera = camera
+  }
+  
   private func calculateDistance(to coordinate: CLLocationCoordinate2D) -> Double {
     guard let currentLocation = self.currentLocation else { return 0.0 }
     
@@ -389,6 +367,7 @@ final class MapViewController: UIViewController {
   
   private func handleSelectedPlace(_ place: PlaceInfo) {
     // 검색결과 UI 숨기기
+    mapView.clear()
     hideSearchResults()
     searchTextField.resignFirstResponder()
     
@@ -403,21 +382,13 @@ final class MapViewController: UIViewController {
     marker.snippet = place.address
     marker.userData = place
     marker.map = mapView
-    
-    // 선택된 마커 저장
     selectedMarker = marker
-    
-    // 마커를 중앙에 위치시키기
-    DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { [weak self] in
-      self?.mapView.selectedMarker = marker
-    }
     
     // 캐러셀에 단일 장소 표시
     updateCarousel(with: [place])
   }
   
   // MARK: - Carousel Methods
-  
   private func updateCarousel(with places: [PlaceInfo]) {
     // 장소 목록 설정 (빈 목록이라도 캐러셀은 표시됨)
     carouselView.setPlaces(places)
@@ -453,10 +424,6 @@ final class MapViewController: UIViewController {
       self?.dismissPlaceDetailPopup()
     }
     
-    popup.onDirectionButtonTapped = { [weak self] place in
-      self?.getDirections(to: place)
-    }
-    
     popup.onShareButtonTapped = { [weak self] place in
       self?.sharePlaceInfo(place)
     }
@@ -479,18 +446,6 @@ final class MapViewController: UIViewController {
       popup.removeFromSuperview()
       self.placeDetailPopup = nil
     }
-  }
-  
-  private func getDirections(to place: PlaceInfo) {
-    // 여기에 경로 안내 로직 구현
-    // 예: 네이티브 지도 앱으로 이동하거나, 앱 내에서 경로 표시
-    let alert = UIAlertController(
-      title: "길 찾기",
-      message: "\(place.name)까지의 경로를 안내합니다. (데모 알림)",
-      preferredStyle: .alert
-    )
-    alert.addAction(UIAlertAction(title: "확인", style: .default))
-    present(alert, animated: true)
   }
   
   private func sharePlaceInfo(_ place: PlaceInfo) {
@@ -560,7 +515,16 @@ final class MapViewController: UIViewController {
 extension MapViewController: UITextFieldDelegate {
   func textFieldShouldReturn(_ textField: UITextField) -> Bool {
     if let text = textField.text, !text.isEmpty {
-      searchLocation(query: text)
+      // 자동완성 결과가 있고 비어있지 않으면 첫 번째 항목 선택
+      if !searchResults.isEmpty {
+        let firstPrediction = searchResults[0]
+        // 텍스트 필드의 내용을 선택한 항목의 텍스트로 업데이트
+        textField.text = firstPrediction.attributedPrimaryText.string
+        fetchPlaceDetails(placeID: firstPrediction.placeID)
+      } else {
+        // 자동완성 결과가 없으면 기존처럼 검색어로 검색
+        searchLocation(query: text)
+      }
     }
     textField.resignFirstResponder()
     return true
@@ -574,7 +538,6 @@ extension MapViewController: UITextFieldDelegate {
   }
   
   func textFieldDidEndEditing(_ textField: UITextField) {
-    // 편집 종료 시 딜레이를 두고 검색 결과 숨김 (탭 시간 확보)
     DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { [weak self] in
       self?.hideSearchResults()
     }
@@ -582,13 +545,18 @@ extension MapViewController: UITextFieldDelegate {
 }
 
 // MARK: - UITableViewDelegate, UITableViewDataSource
-
 extension MapViewController: UITableViewDelegate, UITableViewDataSource {
-  func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
+  func tableView(
+    _ tableView: UITableView,
+    numberOfRowsInSection section: Int
+  ) -> Int {
     return searchResults.count
   }
   
-  func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
+  func tableView(
+    _ tableView: UITableView,
+    cellForRowAt indexPath: IndexPath
+  ) -> UITableViewCell {
     let cell = tableView.dequeueReusableCell(withIdentifier: "PlaceCell", for: indexPath)
     
     let prediction = searchResults[indexPath.row]
@@ -603,81 +571,88 @@ extension MapViewController: UITableViewDelegate, UITableViewDataSource {
     return cell
   }
   
-  func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
+  func tableView(
+    _ tableView: UITableView,
+    didSelectRowAt indexPath: IndexPath
+  ) {
     tableView.deselectRow(at: indexPath, animated: true)
     
     let prediction = searchResults[indexPath.row]
     fetchPlaceDetails(placeID: prediction.placeID)
+    
+    searchTextField.text = prediction.attributedPrimaryText.string
   }
 }
 
 // MARK: - CLLocationManagerDelegate
-
 extension MapViewController: CLLocationManagerDelegate {
-  func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
+  func locationManager(
+    _ manager: CLLocationManager,
+    didUpdateLocations locations: [CLLocation]
+  ) {
     guard let location = locations.last else { return }
     
     // 현재 위치 업데이트
     currentLocation = location
     
     // 최초 1회만 현재 위치로 카메라 이동
-    if mapView.camera.target.latitude == seoulCoordinate.latitude &&
-        mapView.camera.target.longitude == seoulCoordinate.longitude {
-      let camera = GMSCameraPosition.camera(
-        withLatitude: location.coordinate.latitude,
-        longitude: location.coordinate.longitude,
-        zoom: 15
-      )
-      mapView.animate(to: camera)
-    }
+    let camera = GMSCameraPosition.camera(
+      withLatitude: location.coordinate.latitude,
+      longitude: location.coordinate.longitude,
+      zoom: 15
+    )
+    mapView.camera = camera
     
-    // 위치를 지속적으로 받을 필요가 없으면 업데이트 중지
     locationManager.stopUpdatingLocation()
   }
   
-  func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
-    print("위치 정보를 가져오는데 실패했습니다: \(error.localizedDescription)")
+  func locationManager(
+    _ manager: CLLocationManager,
+    didFailWithError error: Error
+  ) {
+    Logger.log(message: "위치 정보를 가져오는데 실패했습니다: \(error.localizedDescription)")
   }
   
   func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
-    checkLocationAuthorization()
+    switch manager.authorizationStatus {
+    case .authorizedWhenInUse, .authorizedAlways:
+      // 권한이 허용되면 즉시 위치 업데이트 시작
+      locationManager.startUpdatingLocation()
+    case .denied, .restricted:
+      // 위치 권한이 거부된 경우 서울 좌표로 설정
+      setDefaultMapCamera()
+      showLocationAccessAlert()
+    case .notDetermined:
+      // 이미 요청 중
+      break
+    @unknown default:
+      setDefaultMapCamera()
+    }
   }
 }
 
 // MARK: - GMSMapViewDelegate
 
 extension MapViewController: GMSMapViewDelegate {
-  func mapView(_ mapView: GMSMapView, didTap marker: GMSMarker) -> Bool {
-    // 마커를 탭하면 해당 장소로 카메라 이동
-    let camera = GMSCameraPosition.camera(
-      withLatitude: marker.position.latitude,
-      longitude: marker.position.longitude,
-      zoom: mapView.camera.zoom
-    )
-    mapView.animate(to: camera)
-    
-    // 선택된 마커 저장
-    selectedMarker = marker
-    
-    // 마커에 연결된 장소 정보 가져오기
-    if let place = marker.userData as? PlaceInfo {
-      // 선택된 장소를 캐러셀에 표시하고 첫 번째 위치로 스크롤
-      updateCarousel(with: [place])
-      carouselView.scrollToPlace(at: 0, animated: true)
-    }
-    
-    return true
-  }
-  
-  func mapView(_ mapView: GMSMapView, didTapAt coordinate: CLLocationCoordinate2D) {
+  func mapView(
+    _ mapView: GMSMapView,
+    didTapAt coordinate: CLLocationCoordinate2D
+  ) {
     // 지도 탭 시 팝업 닫기
     dismissPlaceDetailPopup()
+    
     // 검색 결과 숨기기
     hideSearchResults()
     searchTextField.resignFirstResponder()
   }
   
-  func mapView(_ mapView: GMSMapView, didChange position: GMSCameraPosition) {
-    // 지도 이동 시 수행할 작업 (필요한 경우)
+  func mapView(
+    _ mapView: GMSMapView,
+    didTapPOIWithPlaceID placeID: String,
+    name: String,
+    location: CLLocationCoordinate2D
+  ) {
+    
+    fetchPlaceDetails(placeID: placeID)
   }
 }

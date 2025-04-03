@@ -20,7 +20,6 @@ final class PlaceDetailPopupView: UIView {
   private let placeImageUseCase: FetchPlaceImagesUseCaseProtocol? = DIContainer.shared.resolve(type: FetchPlaceImagesUseCaseProtocol.self)
   
   var onDismiss: (() -> Void)?
-  var onDirectionButtonTapped: ((PlaceInfo) -> Void)?
   var onShareButtonTapped: ((PlaceInfo) -> Void)?
   
   // MARK: - UI Components
@@ -29,7 +28,6 @@ final class PlaceDetailPopupView: UIView {
     let view = UIView()
     view.backgroundColor = .black.withAlphaComponent(0.5)
     
-    // 팝업 외부 영역 탭 제스처 추가
     let tapGesture = UITapGestureRecognizer(target: self, action: #selector(backgroundTapped))
     view.addGestureRecognizer(tapGesture)
     
@@ -101,17 +99,6 @@ final class PlaceDetailPopupView: UIView {
     return stackView
   }()
   
-  private lazy var directionsButton: UIButton = {
-    let button = UIButton(type: .system)
-    button.setTitle("길 찾기", for: .normal)
-    button.titleLabel?.font = UIFont.systemFont(ofSize: 16, weight: .medium)
-    button.backgroundColor = .systemBlue
-    button.tintColor = .white
-    button.layer.cornerRadius = 8
-    button.addTarget(self, action: #selector(directionsButtonTapped), for: .touchUpInside)
-    return button
-  }()
-  
   private lazy var shareButton: UIButton = {
     let button = UIButton(type: .system)
     button.setTitle("공유하기", for: .normal)
@@ -151,13 +138,13 @@ final class PlaceDetailPopupView: UIView {
     containerView.addSubview(infoStackView)
     containerView.addSubview(buttonStackView)
     
-    buttonStackView.addArrangedSubview(directionsButton)
     buttonStackView.addArrangedSubview(shareButton)
     
     // 컨테이너 뷰 제약 조건
     containerView.snp.makeConstraints { make in
-      make.left.right.bottom.equalToSuperview()
-      make.height.equalToSuperview().multipliedBy(0.7) // 화면의 70% 높이
+      make.center.equalToSuperview()
+      make.height.equalToSuperview().multipliedBy(0.7)
+      make.width.equalToSuperview().multipliedBy(0.8)
     }
     
     // 배경 오버레이 뷰 제약 조건
@@ -442,12 +429,6 @@ final class PlaceDetailPopupView: UIView {
     let location = gesture.location(in: self)
     if !containerView.frame.contains(location) {
       onDismiss?()
-    }
-  }
-  
-  @objc private func directionsButtonTapped() {
-    if let place = place {
-      onDirectionButtonTapped?(place)
     }
   }
   
