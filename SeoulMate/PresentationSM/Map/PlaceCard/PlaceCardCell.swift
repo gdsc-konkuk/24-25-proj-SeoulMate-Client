@@ -16,7 +16,7 @@ struct PlaceInfo {
   let name: String
   let address: String
   var imageURL: String?
-  let distance: Double
+  var distance: Double
   let coordinate: (Double, Double)
   var placeId: String? // Google Places ID 추가
 }
@@ -215,11 +215,18 @@ final class PlaceCardCell: UICollectionViewCell {
     setupImage(for: place)
   }
   
+  // PlaceCardCell에 이미지 로딩 메서드 개선
   private func setupImage(for place: PlaceInfo) {
     // 기본 이미지 설정
     let placeholderImage = UIImage(systemName: "photo")
     placeImageView.image = placeholderImage
     placeImageView.tintColor = .gray
+    
+    // 이전 작업 취소
+    imageTask?.cancel()
+    placeImageView.kf.cancelDownloadTask()
+    
+    Logger.log(message: "PlaceCardCell: 이미지 로딩 시작 - \(place.name)")
     
     // 1. Google Places ID를 통한 이미지 로드
     if let placeId = place.placeId {
@@ -227,24 +234,7 @@ final class PlaceCardCell: UICollectionViewCell {
     }
     // 2. imageURL이 있는 경우 Kingfisher를 통한 이미지 로드
     else if let imageURL = place.imageURL, let url = URL(string: imageURL) {
-      placeImageView.kf.setImage(
-        with: url,
-        placeholder: placeholderImage,
-        options: [
-          .transition(.fade(0.3)),
-          .cacheOriginalImage,
-          .retryStrategy(DelayRetryStrategy(maxRetryCount: 3))
-        ]
-      ) { [weak self] result in
-        switch result {
-        case .success(_):
-          break
-        case .failure(let error):
-          print("Kingfisher 이미지 로드 실패: \(error.localizedDescription)")
-          self?.placeImageView.image = placeholderImage
-          self?.placeImageView.tintColor = .gray
-        }
-      }
+      loadImageViaKingfisher(url: url)
     }
   }
   
@@ -257,51 +247,71 @@ final class PlaceCardCell: UICollectionViewCell {
     
     // 1. 먼저 Kingfisher 캐시에서 확인 (메모리 캐시)
     if let cachedImage = KingfisherManager.shared.cache.retrieveImageInMemoryCache(forKey: cacheKey) {
+      Logger.log(message: "PlaceCardCell: 메모리 캐시에서 이미지 발견 - \(placeId)")
       self.placeImageView.image = cachedImage
       return
     }
+    
+    Logger.log(message: "PlaceCardCell: 메모리 캐시에 없음, 디스크 캐시 확인 - \(placeId)")
     
     // 2. 디스크 캐시 확인 (비동기 호출 처리)
     KingfisherManager.shared.cache.retrieveImageInDiskCache(forKey: cacheKey) { [weak self] result in
       switch result {
       case .success(let image):
         if let image = image {
+          Logger.log(message: "PlaceCardCell: 디스크 캐시에서 이미지 발견 - \(placeId)")
           DispatchQueue.main.async {
             self?.placeImageView.image = image
           }
           return
         }
         // 캐시에 없는 경우 Places API 호출
+        Logger.log(message: "PlaceCardCell: 디스크 캐시에 없음, API 호출 - \(placeId)")
         self?.loadImageFromPlacesAPI(placeId: placeId, maxSize: CGSize(width: 300, height: 300), cacheKey: cacheKey)
-      case .failure(_):
+      case .failure(let error):
         // 캐시 접근 실패 시 Places API 호출
+        Logger.log(message: "PlaceCardCell: 캐시 접근 실패, API 호출 - \(error.localizedDescription)")
         self?.loadImageFromPlacesAPI(placeId: placeId, maxSize: CGSize(width: 300, height: 300), cacheKey: cacheKey)
       }
     }
   }
   
   private func loadImageFromPlacesAPI(placeId: String, maxSize: CGSize, cacheKey: String) {
-    imageTask = placeImageUseCase?.executeForFirstImage(placeId: placeId, maxSize: maxSize)
+    guard let placeImageUseCase = self.placeImageUseCase else {
+      Logger.log(message: "PlaceCardCell: placeImageUseCase가 nil - DI 주입 실패")
+      return
+    }
+    
+    Logger.log(message: "PlaceCardCell: Places API로 이미지 로드 시작 - \(placeId)")
+    
+    imageTask = placeImageUseCase.executeForFirstImage(placeId: placeId, maxSize: maxSize)
       .receive(on: DispatchQueue.main)
       .sink(
         receiveCompletion: { [weak self] completion in
           if case .failure(let error) = completion {
-            print("Places 이미지 로드 실패: \(error.localizedDescription)")
+            Logger.log(message: "PlaceCardCell: Places 이미지 로드 실패 - \(error.localizedDescription)")
             self?.placeImageView.image = UIImage(systemName: "photo")
             self?.placeImageView.tintColor = .gray
+            
+            // 실패 시 상세 로깅
+            if let nsError = error as NSError? {
+              Logger.log(message: "PlaceCardCell: 오류 코드: \(nsError.code), 도메인: \(nsError.domain)")
+            }
           }
         },
         receiveValue: { [weak self] placeImage in
+          
           guard let self = self else { return }
           
           if let placeImage = placeImage {
+            Logger.log(message: "PlaceCardCell: Places 이미지 로드 성공 - \(placeId)")
             self.placeImageView.image = placeImage.image
             
-            // Kingfisher 캐시에 이미지 저장
+            // Kingfisher 캐시에 이미지 저장 (재사용 최적화)
             KingfisherManager.shared.cache.store(
               placeImage.image,
               forKey: cacheKey,
-              options: KingfisherParsedOptionsInfo([]),
+              options: KingfisherParsedOptionsInfo([.diskCacheExpiration(.days(7))]),
               toDisk: true
             )
             
@@ -310,11 +320,37 @@ final class PlaceCardCell: UICollectionViewCell {
               self.addAttributionLabel(text: attribution)
             }
           } else {
+            Logger.log(message: "PlaceCardCell: Places 이미지 없음 - \(placeId)")
             self.placeImageView.image = UIImage(systemName: "photo")
             self.placeImageView.tintColor = .gray
           }
         }
       )
+  }
+  
+  private func loadImageViaKingfisher(url: URL) {
+    Logger.log(message: "PlaceCardCell: Kingfisher로 이미지 로드 시작 - \(url.absoluteString)")
+    
+    let placeholderImage = UIImage(systemName: "photo")
+    
+    placeImageView.kf.setImage(
+      with: url,
+      placeholder: placeholderImage,
+      options: [
+        .transition(.fade(0.3)),
+        .cacheOriginalImage,
+        .retryStrategy(DelayRetryStrategy(maxRetryCount: 3))
+      ]
+    ) { [weak self] result in
+      switch result {
+      case .success(let value):
+        Logger.log(message: "PlaceCardCell: Kingfisher 이미지 로드 성공 - 크기: \(value.image.size.width)x\(value.image.size.height)")
+      case .failure(let error):
+        Logger.log(message: "PlaceCardCell: Kingfisher 이미지 로드 실패 - \(error.localizedDescription)")
+        self?.placeImageView.image = placeholderImage
+        self?.placeImageView.tintColor = .gray
+      }
+    }
   }
   
   private func addAttributionLabel(text: String) {

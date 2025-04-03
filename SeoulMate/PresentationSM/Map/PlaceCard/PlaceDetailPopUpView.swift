@@ -3,6 +3,7 @@
 //  SeoulMate
 //
 //  Created by 박성근 on 4/1/25.
+//  Updated on 4/3/25.
 //
 
 import UIKit
@@ -233,6 +234,8 @@ final class PlaceDetailPopupView: UIView {
   // MARK: - Private Methods
   
   private func loadImages(for place: PlaceInfo) {
+    Logger.log(message: "DetailPopup: 이미지 로딩 시작 - \(place.name)")
+    
     // 1. Google Places ID로 이미지 로드
     if let placeId = place.placeId {
       loadPlaceImages(placeId: placeId)
@@ -240,36 +243,54 @@ final class PlaceDetailPopupView: UIView {
     // 2. imageURL로 이미지 로드
     else if let imageURL = place.imageURL, let url = URL(string: imageURL) {
       loadKingfisherImage(url: url)
+    } else {
+      Logger.log(message: "DetailPopup: 이미지 URL과 placeId 모두 없음")
     }
   }
   
   private func loadPlaceImages(placeId: String) {
-    let maxSize = CGSize(width: UIScreen.main.bounds.width, height: 200)
+    guard let placeImageUseCase = self.placeImageUseCase else {
+      Logger.log(message: "DetailPopup: placeImageUseCase가 nil - DI 주입 실패")
+      return
+    }
     
-    placeImageUseCase?.execute(placeId: placeId, maxSize: maxSize)
+    let maxSize = CGSize(width: UIScreen.main.bounds.width, height: 300)
+    let cacheKey = "place_detail_\(placeId)"
+    
+    Logger.log(message: "DetailPopup: Places API로 이미지 로드 시작 - \(placeId)")
+    
+    placeImageUseCase.execute(placeId: placeId, maxSize: maxSize)
       .receive(on: DispatchQueue.main)
       .sink(
         receiveCompletion: { [weak self] completion in
+          guard let self = self else { return }
+          
           if case .failure(let error) = completion {
-            print("이미지 로드 실패: \(error.localizedDescription)")
+            Logger.log(message: "DetailPopup: 이미지 로드 실패 - \(error.localizedDescription)")
+            self.setupErrorImageSlideshow()
           }
         },
         receiveValue: { [weak self] placeImages in
           guard let self = self else { return }
           
-          if !placeImages.isEmpty {
-            self.placeImages = placeImages
-            self.updateImageSlideshow()
-            
-            // 이미지를 Kingfisher 캐시에 저장 (재사용을 위해)
-            for (index, image) in placeImages.enumerated() {
-              KingfisherManager.shared.cache.store(
-                image.image,
-                forKey: "place_detail_\(self.place?.id ?? "unknown")_\(index)",
-                options: KingfisherParsedOptionsInfo([.diskCacheExpiration(.days(7))]),
-                toDisk: true
-              )
-            }
+          if placeImages.isEmpty {
+            Logger.log(message: "DetailPopup: 이미지 없음 - \(placeId)")
+            self.setupErrorImageSlideshow()
+            return
+          }
+          
+          Logger.log(message: "DetailPopup: 이미지 로드 성공 - \(placeImages.count)개")
+          self.placeImages = placeImages
+          self.updateImageSlideshow()
+          
+          // 이미지를 Kingfisher 캐시에 저장 (재사용을 위해)
+          for (index, image) in placeImages.enumerated() {
+            KingfisherManager.shared.cache.store(
+              image.image,
+              forKey: "\(cacheKey)_\(index)",
+              options: KingfisherParsedOptionsInfo([.diskCacheExpiration(.days(7))]),
+              toDisk: true
+            )
           }
         }
       )
@@ -277,6 +298,8 @@ final class PlaceDetailPopupView: UIView {
   }
   
   private func loadKingfisherImage(url: URL) {
+    Logger.log(message: "DetailPopup: Kingfisher로 이미지 로드 시작 - \(url.absoluteString)")
+    
     let imageView = UIImageView(frame: CGRect(x: 0, y: 0, width: frame.width, height: 200))
     imageView.contentMode = .scaleAspectFill
     imageView.clipsToBounds = true
@@ -297,7 +320,9 @@ final class PlaceDetailPopupView: UIView {
         guard let self = self else { return }
         
         switch result {
-        case .success(_):
+        case .success(let value):
+          Logger.log(message: "DetailPopup: Kingfisher 이미지 로드 성공 - 크기: \(value.image.size.width)x\(value.image.size.height)")
+          
           // 이미지 스크롤 뷰에 추가
           self.imageScrollView.addSubview(imageView)
           self.imageScrollView.contentSize = CGSize(width: self.frame.width, height: 200)
@@ -306,20 +331,49 @@ final class PlaceDetailPopupView: UIView {
           self.pageControl.numberOfPages = 1
           self.pageControl.currentPage = 0
         case .failure(let error):
-          print("이미지 로드 실패: \(error.localizedDescription)")
-          self.setupPlaceholderImageSlideshow()
+          Logger.log(message: "DetailPopup: Kingfisher 이미지 로드 실패 - \(error.localizedDescription)")
+          self.setupErrorImageSlideshow()
         }
       })
   }
   
+  // 로딩 중 이미지 슬라이드쇼 설정
   private func setupPlaceholderImageSlideshow() {
     // 기존 이미지 뷰 제거
     imageScrollView.subviews.forEach { $0.removeFromSuperview() }
     
-    // 로딩 표시 또는 기본 이미지
-    let placeholderImageView = createPlaceholderImageView(width: frame.width)
+    // 로딩 표시 이미지
+    let placeholderImageView = UIImageView(frame: CGRect(x: 0, y: 0, width: frame.width, height: 200))
+    placeholderImageView.contentMode = .scaleAspectFit
+    placeholderImageView.clipsToBounds = true
+    placeholderImageView.image = UIImage(systemName: "arrow.clockwise")
+    placeholderImageView.tintColor = .systemGray
+    placeholderImageView.backgroundColor = UIColor(white: 0.95, alpha: 1)
+    
     imageScrollView.addSubview(placeholderImageView)
-    placeholderImageView.frame = CGRect(x: 0, y: 0, width: frame.width, height: 200)
+    
+    // 이미지 스크롤 뷰 컨텐츠 사이즈 설정
+    imageScrollView.contentSize = CGSize(width: frame.width, height: 200)
+    
+    // 페이지 컨트롤 업데이트
+    pageControl.numberOfPages = 1
+    pageControl.currentPage = 0
+  }
+  
+  // 오류 발생 시 이미지 슬라이드쇼 설정
+  private func setupErrorImageSlideshow() {
+    // 기존 이미지 뷰 제거
+    imageScrollView.subviews.forEach { $0.removeFromSuperview() }
+    
+    // 오류 표시 이미지
+    let errorImageView = UIImageView(frame: CGRect(x: 0, y: 0, width: frame.width, height: 200))
+    errorImageView.contentMode = .scaleAspectFit
+    errorImageView.clipsToBounds = true
+    errorImageView.image = UIImage(systemName: "exclamationmark.triangle")
+    errorImageView.tintColor = .systemOrange
+    errorImageView.backgroundColor = UIColor(white: 0.95, alpha: 1)
+    
+    imageScrollView.addSubview(errorImageView)
     
     // 이미지 스크롤 뷰 컨텐츠 사이즈 설정
     imageScrollView.contentSize = CGSize(width: frame.width, height: 200)
@@ -335,7 +389,7 @@ final class PlaceDetailPopupView: UIView {
     
     // 이미지가 없는 경우
     if placeImages.isEmpty {
-      setupPlaceholderImageSlideshow()
+      setupErrorImageSlideshow()
       return
     }
     
@@ -406,16 +460,6 @@ final class PlaceDetailPopupView: UIView {
       width: imageView.frame.width,
       height: 20
     )
-  }
-  
-  private func createPlaceholderImageView(width: CGFloat) -> UIImageView {
-    let imageView = UIImageView()
-    imageView.contentMode = .scaleAspectFit
-    imageView.clipsToBounds = true
-    imageView.image = UIImage(systemName: "photo")
-    imageView.tintColor = .gray
-    imageView.backgroundColor = UIColor(white: 0.95, alpha: 1)
-    return imageView
   }
   
   // MARK: - Actions

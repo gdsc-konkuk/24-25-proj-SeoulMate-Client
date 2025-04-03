@@ -3,6 +3,7 @@
 //  SeoulMate
 //
 //  Created by 박성근 on 3/27/25.
+//  Updated on 4/3/25.
 //
 
 import UIKit
@@ -14,21 +15,16 @@ import Combine
 
 final class MapViewController: UIViewController {
   
-  // MARK: - Properties
+  // MARK: - Dependencies
+  private let placeSearchUseCase: PlaceSearchUseCaseProtocol
+  private let placeImageUseCase: FetchPlaceImagesUseCaseProtocol
   
+  // MARK: - Properties
   private let locationManager = CLLocationManager()
-  private var currentLocation: CLLocation?
   private var mapView: GMSMapView!
   private var selectedMarker: GMSMarker?
-  private var placesClient: GMSPlacesClient!
-  
-  // 자동완성 결과를 표시할 테이블 뷰
-  private var searchResultsTableView: UITableView!
-  private var searchResultsBackgroundView: UIView!
-  private var searchResults: [GMSAutocompletePrediction] = []
-  private var searchActive: Bool = false
-  
-  // 서울 좌표 (기본값)
+  private var cancellables = Set<AnyCancellable>()
+  private var userLocation: CLLocation?
   private let seoulCoordinate = CLLocationCoordinate2D(latitude: 37.5665, longitude: 126.9780)
   
   // MARK: - UI Components
@@ -62,6 +58,12 @@ final class MapViewController: UIViewController {
     return imageView
   }()
   
+  // 자동완성 결과를 표시할 테이블 뷰
+  private var searchResultsTableView: UITableView!
+  private var searchResultsBackgroundView: UIView!
+  private var searchResults: [GMSAutocompletePrediction] = []
+  private var searchActive: Bool = false
+  
   private lazy var carouselView: PlaceCardCarouselView = {
     let view = PlaceCardCarouselView()
     view.isHidden = true
@@ -72,22 +74,33 @@ final class MapViewController: UIViewController {
   }()
   
   private var placeDetailPopup: PlaceDetailPopupView?
+  private var loadingIndicator: UIActivityIndicatorView?
+  
+  // MARK: - Initialization
+  init() {
+    // DIContainer에서 필요한 UseCase 가져오기
+    self.placeSearchUseCase = DIContainer.shared.resolve(type: PlaceSearchUseCaseProtocol.self)!
+    self.placeImageUseCase = DIContainer.shared.resolve(type: FetchPlaceImagesUseCaseProtocol.self)!
+    super.init(nibName: nil, bundle: nil)
+  }
+  
+  required init?(coder: NSCoder) {
+    fatalError("init(coder:) has not been implemented")
+  }
   
   // MARK: - Lifecycle
   
   override func viewDidLoad() {
     super.viewDidLoad()
     
-    // Google Places 초기화
-    placesClient = GMSPlacesClient.shared()
-    
     setupMapView()
     setupSearchBar()
     setupSearchResultsTableView()
     setupCarouselView()
     setupLocationManager()
+    setupLoadingIndicator()
     
-    // TODO: 수정 필요 [캐러셀 초기 설정 (빈 카드 5개로 시작)]
+    // 초기 캐러셀 설정 (빈 카드)
     updateCarousel(with: [])
   }
   
@@ -188,195 +201,150 @@ final class MapViewController: UIViewController {
     locationManager.delegate = self
     locationManager.desiredAccuracy = kCLLocationAccuracyBest
     
-    switch locationManager.authorizationStatus {
+    let authorizationStatus = locationManager.authorizationStatus
+    checkLocationAuthorization(status: authorizationStatus)
+    
+    switch authorizationStatus {
     case .authorizedWhenInUse, .authorizedAlways:
       locationManager.startUpdatingLocation()
     case .notDetermined:
       locationManager.requestWhenInUseAuthorization()
-    case .denied, .restricted:
-      // 위치 권한이 없는 경우 서울 좌표로 초기화
-      setDefaultMapCamera()
-      showLocationAccessAlert()
-    @unknown default:
-      setDefaultMapCamera()
+    default:
+      break
     }
   }
   
-  // MARK: - Actions
-  @objc private func locationButtonTapped() {
-    if let location = currentLocation {
-      let camera = GMSCameraPosition.camera(
-        withLatitude: location.coordinate.latitude,
-        longitude: location.coordinate.longitude,
-        zoom: 15
-      )
-      mapView.animate(to: camera)
-    } else {
-      checkLocationAuthorization()
+  private func setupLoadingIndicator() {
+    loadingIndicator = UIActivityIndicatorView(style: .large)
+    loadingIndicator?.color = .systemBlue
+    loadingIndicator?.hidesWhenStopped = true
+    
+    guard let loadingIndicator = loadingIndicator else { return }
+    
+    view.addSubview(loadingIndicator)
+    loadingIndicator.snp.makeConstraints { make in
+      make.center.equalToSuperview()
     }
   }
   
-  @objc private func searchTextChanged(_ textField: UITextField) {
-    guard let searchText = textField.text, !searchText.isEmpty else {
-      hideSearchResults()
+  // MARK: - Search Functions
+  
+  func searchPlaces(query: String) {
+    guard !query.isEmpty else {
+      self.searchResults = []
+      self.updateSearchResultsUI(isEmpty: true)
       return
     }
     
-    // 자동완성 검색 수행
-    performAutocompleteSearch(searchText)
-  }
-  
-  // MARK: - Google Places Autocomplete
-  private func performAutocompleteSearch(_ query: String) {
-    // 서울 지역으로 제한하는 필터 (선택적)
-    let filter = GMSAutocompleteFilter()
-    filter.countries = ["KR"]
+    showLoading(true)
     
-    // 자동완성 검색 요청
-    placesClient.findAutocompletePredictions(
-      fromQuery: query,
-      filter: filter,
-      sessionToken: nil
-    ) { [weak self] (predictions, error) in
-      guard let self = self else { return }
-      
-      if let error = error {
-        print("자동완성 검색 오류: \(error.localizedDescription)")
-        return
-      }
-      
-      if let predictions = predictions {
-        self.searchResults = predictions
-        self.showSearchResults()
-      }
-    }
-  }
-  
-  private func showSearchResults() {
-    DispatchQueue.main.async { [weak self] in
-      guard let self = self else { return }
-      
-      if self.searchResults.isEmpty {
-        self.hideSearchResults()
-        return
-      }
-      
-      self.searchActive = true
-      self.searchResultsTableView.reloadData()
-      self.searchResultsBackgroundView.isHidden = false
-      self.searchResultsTableView.isHidden = false
-    }
-  }
-  
-  private func hideSearchResults() {
-    searchActive = false
-    searchResultsBackgroundView.isHidden = true
-    searchResultsTableView.isHidden = true
-  }
-  
-  private func fetchPlaceDetails(placeID: String) {
-    let fields: GMSPlaceField = [.name, .formattedAddress, .coordinate, .photos]
+    // 현재 위치 정보
+    let userCoordinate = locationManager.location?.coordinate
     
-    placesClient.fetchPlace(
-      fromPlaceID: placeID,
-      placeFields: fields,
-      sessionToken: nil
-    ) { [weak self] (place, error) in
-      guard let self = self else { return }
-      
-      if let error = error {
-        Logger.log(message: "장소 상세정보 조회 오류: \(error.localizedDescription)")
-        return
-      }
-      
-      if let place = place {
-        // 장소 정보 생성
-        var newPlace = PlaceInfo(
-          id: place.placeID ?? UUID().uuidString,
-          name: place.name ?? "알 수 없는 장소",
-          address: place.formattedAddress ?? "",
-          imageURL: nil,
-          distance: self.calculateDistance(to: place.coordinate),
-          coordinate: (place.coordinate.latitude, place.coordinate.longitude)
-        )
-        
-        // 첫 번째 사진이 있는 경우 사진 로드
-        if let photoMetadata = place.photos?.first {
-          self.loadPlacePhoto(photoMetadata: photoMetadata) { imageURL in
-            // 이미지 URL 업데이트
-            newPlace.imageURL = imageURL
-            // 선택한 장소 처리
-            self.handleSelectedPlace(newPlace)
-          }
-        } else {
-          // 사진이 없는 경우 그대로 처리
-          self.handleSelectedPlace(newPlace)
-        }
-      }
-    }
-  }
-  
-  private func loadPlacePhoto(photoMetadata: GMSPlacePhotoMetadata, completion: @escaping (String?) -> Void) {
-    placesClient.loadPlacePhoto(photoMetadata) { (photo, error) in
-      if let error = error {
-        print("사진 로드 오류: \(error.localizedDescription)")
-        completion(nil)
-        return
-      }
-      
-      if let photo = photo {
-        // 이미지를 앱 내 임시 디렉토리에 저장하고 URL 생성
-        // 실제 앱에서는 이미지 캐싱 라이브러리를 사용하는 것이 좋음
-        if let documentsDirectory = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first {
-          let fileName = "\(UUID().uuidString).jpg"
-          let fileURL = documentsDirectory.appendingPathComponent(fileName)
+    placeSearchUseCase.searchPlaces(query: query, region: userCoordinate)
+      .receive(on: DispatchQueue.main)
+      .sink(
+        receiveCompletion: { [weak self] completion in
+          self?.showLoading(false)
           
-          if let data = photo.jpegData(compressionQuality: 0.8) {
-            do {
-              try data.write(to: fileURL)
-              completion(fileURL.absoluteString)
-            } catch {
-              print("이미지 저장 오류: \(error.localizedDescription)")
-              completion(nil)
-            }
-          } else {
-            completion(nil)
+          if case .failure(let error) = completion {
+            self?.showErrorAlert(message: "검색 오류: \(error.localizedDescription)")
           }
-        } else {
-          completion(nil)
+        },
+        receiveValue: { [weak self] predictions in
+          self?.searchResults = predictions
+          self?.updateSearchResultsUI(isEmpty: predictions.isEmpty)
         }
-      } else {
-        completion(nil)
-      }
+      )
+      .store(in: &cancellables)
+  }
+  
+  func getPlaceDetails(placeID: String) {
+    guard !placeID.isEmpty else {
+      showErrorAlert(message: "유효하지 않은 장소 ID입니다.")
+      return
+    }
+    
+    Logger.log(message: "장소 상세 정보 요청 시작: \(placeID)")
+    showLoading(true)
+    
+    // 사용자 위치 정보
+    let userLocation = locationManager.location
+    
+    placeSearchUseCase.getPlaceDetails(placeID: placeID, userLocation: userLocation)
+      .receive(on: DispatchQueue.main)
+      .sink(
+        receiveCompletion: { [weak self] completion in
+          self?.showLoading(false)
+          
+          if case .failure(let error) = completion {
+            Logger.log(message: "장소 정보 조회 실패: \(error.localizedDescription)")
+            
+            if let nserror = error as NSError? {
+              // 상세 오류 로깅
+              Logger.log(message: "도메인: \(nserror.domain), 코드: \(nserror.code)")
+              
+              if nserror.domain.contains("GooglePlaces") {
+                self?.showErrorAlert(message: "Google Places API 오류: \(nserror.localizedDescription)")
+              } else {
+                self?.showErrorAlert(message: "장소 정보 조회 오류")
+              }
+            } else {
+              self?.showErrorAlert(message: "장소 정보 조회 오류")
+            }
+          }
+        },
+        receiveValue: { [weak self] placeInfo in
+          guard let self = self else { return }
+          
+          Logger.log(message: "장소 정보 조회 성공: \(placeInfo.name)")
+          
+          // 검색결과 UI 숨기기
+          self.hideSearchResults()
+          
+          // 지도 업데이트
+          self.updateMapWithSelectedPlace(placeInfo)
+          
+          // 장소 위치로 카메라 이동
+          let coordinate = CLLocationCoordinate2D(
+            latitude: placeInfo.coordinate.0,
+            longitude: placeInfo.coordinate.1
+          )
+          let camera = GMSCameraPosition.camera(withTarget: coordinate, zoom: 16)
+          self.mapView.animate(to: camera)
+        }
+      )
+      .store(in: &cancellables)
+  }
+  
+  // MARK: - Location 관련 함수
+  
+  func checkLocationAuthorization(status: CLAuthorizationStatus) {
+    switch status {
+    case .denied, .restricted:
+      showLocationAccessAlert()
+      let camera = GMSCameraPosition.camera(withTarget: seoulCoordinate, zoom: 14)
+      mapView.animate(to: camera)
+    case .notDetermined, .authorizedWhenInUse, .authorizedAlways:
+      break
+    @unknown default:
+      let camera = GMSCameraPosition.camera(withTarget: seoulCoordinate, zoom: 14)
+      mapView.animate(to: camera)
     }
   }
   
-  private func setDefaultMapCamera() {
-    let camera = GMSCameraPosition.camera(withTarget: seoulCoordinate, zoom: 14)
-    mapView.camera = camera
-  }
+  // MARK: - UI Update Methods
   
-  private func calculateDistance(to coordinate: CLLocationCoordinate2D) -> Double {
-    guard let currentLocation = self.currentLocation else { return 0.0 }
-    
-    let placeLocation = CLLocation(latitude: coordinate.latitude, longitude: coordinate.longitude)
-    let distance = currentLocation.distance(from: placeLocation) / 1000.0 // km 단위로 변환
-    
-    return distance
-  }
-  
-  private func handleSelectedPlace(_ place: PlaceInfo) {
-    // 검색결과 UI 숨기기
+  private func updateMapWithSelectedPlace(_ place: PlaceInfo) {
+    // 기존 마커 제거
     mapView.clear()
-    hideSearchResults()
-    searchTextField.resignFirstResponder()
     
-    // 해당 위치로 카메라 이동
-    let coordinate = CLLocationCoordinate2D(latitude: place.coordinate.0, longitude: place.coordinate.1)
-    let camera = GMSCameraPosition.camera(withTarget: coordinate, zoom: 16)
-    mapView.animate(to: camera)
+    // 해당 위치에 마커 생성
+    let coordinate = CLLocationCoordinate2D(
+      latitude: place.coordinate.0,
+      longitude: place.coordinate.1
+    )
     
-    // 마커 추가 (기존 마커가 있으면 재사용)
     let marker = GMSMarker(position: coordinate)
     marker.title = place.name
     marker.snippet = place.address
@@ -384,11 +352,23 @@ final class MapViewController: UIViewController {
     marker.map = mapView
     selectedMarker = marker
     
-    // 캐러셀에 단일 장소 표시
+    // 캐러셀에 선택된 장소 표시
     updateCarousel(with: [place])
   }
   
-  // MARK: - Carousel Methods
+  private func updateSearchResultsUI(isEmpty: Bool) {
+    if isEmpty {
+      searchResultsBackgroundView.isHidden = true
+      searchResultsTableView.isHidden = true
+      searchActive = false
+    } else {
+      searchResultsTableView.reloadData()
+      searchResultsBackgroundView.isHidden = false
+      searchResultsTableView.isHidden = false
+      searchActive = true
+    }
+  }
+  
   private func updateCarousel(with places: [PlaceInfo]) {
     // 장소 목록 설정 (빈 목록이라도 캐러셀은 표시됨)
     carouselView.setPlaces(places)
@@ -405,11 +385,36 @@ final class MapViewController: UIViewController {
     }
   }
   
-  private func scrollCarouselToPlace(_ place: PlaceInfo) {
-    carouselView.scrollToPlace(at: 0, animated: true)
+  private func showLoading(_ isLoading: Bool) {
+    if isLoading {
+      loadingIndicator?.startAnimating()
+    } else {
+      loadingIndicator?.stopAnimating()
+    }
+  }
+  
+  // MARK: - Actions
+  
+  @objc private func locationButtonTapped() {
+    if let location = locationManager.location {
+      let camera = GMSCameraPosition.camera(
+        withLatitude: location.coordinate.latitude,
+        longitude: location.coordinate.longitude,
+        zoom: 15
+      )
+      mapView.animate(to: camera)
+    } else {
+      checkLocationAuthorization(status: locationManager.authorizationStatus)
+    }
+  }
+  
+  @objc private func searchTextChanged(_ textField: UITextField) {
+    guard let searchText = textField.text else { return }
+    searchPlaces(query: searchText)
   }
   
   // MARK: - Place Detail Popup
+  
   private func showPlaceDetailPopup(for place: PlaceInfo) {
     // 기존 팝업 제거
     dismissPlaceDetailPopup()
@@ -473,17 +478,10 @@ final class MapViewController: UIViewController {
   
   // MARK: - Helper Methods
   
-  private func checkLocationAuthorization() {
-    switch locationManager.authorizationStatus {
-    case .notDetermined:
-      locationManager.requestWhenInUseAuthorization()
-    case .restricted, .denied:
-      showLocationAccessAlert()
-    case .authorizedWhenInUse, .authorizedAlways:
-      locationManager.startUpdatingLocation()
-    @unknown default:
-      break
-    }
+  private func hideSearchResults() {
+    searchResults = []
+    updateSearchResultsUI(isEmpty: true)
+    searchTextField.resignFirstResponder()
   }
   
   private func showLocationAccessAlert() {
@@ -504,9 +502,16 @@ final class MapViewController: UIViewController {
     present(alert, animated: true)
   }
   
-  private func searchLocation(query: String) {
-    // 구글 자동완성 API 사용
-    performAutocompleteSearch(query)
+  private func showErrorAlert(message: String) {
+    let alert = UIAlertController(
+      title: "오류",
+      message: message,
+      preferredStyle: .alert
+    )
+    
+    alert.addAction(UIAlertAction(title: "확인", style: .default))
+    
+    present(alert, animated: true)
   }
 }
 
@@ -520,10 +525,10 @@ extension MapViewController: UITextFieldDelegate {
         let firstPrediction = searchResults[0]
         // 텍스트 필드의 내용을 선택한 항목의 텍스트로 업데이트
         textField.text = firstPrediction.attributedPrimaryText.string
-        fetchPlaceDetails(placeID: firstPrediction.placeID)
+        getPlaceDetails(placeID: firstPrediction.placeID)
       } else {
         // 자동완성 결과가 없으면 기존처럼 검색어로 검색
-        searchLocation(query: text)
+        searchPlaces(query: text)
       }
     }
     textField.resignFirstResponder()
@@ -533,7 +538,7 @@ extension MapViewController: UITextFieldDelegate {
   func textFieldDidBeginEditing(_ textField: UITextField) {
     if let text = textField.text, !text.isEmpty {
       // 텍스트가 있으면 자동완성 결과 표시
-      performAutocompleteSearch(text)
+      searchPlaces(query: text)
     }
   }
   
@@ -578,7 +583,7 @@ extension MapViewController: UITableViewDelegate, UITableViewDataSource {
     tableView.deselectRow(at: indexPath, animated: true)
     
     let prediction = searchResults[indexPath.row]
-    fetchPlaceDetails(placeID: prediction.placeID)
+    getPlaceDetails(placeID: prediction.placeID)
     
     searchTextField.text = prediction.attributedPrimaryText.string
   }
@@ -590,20 +595,18 @@ extension MapViewController: CLLocationManagerDelegate {
     _ manager: CLLocationManager,
     didUpdateLocations locations: [CLLocation]
   ) {
-    guard let location = locations.last else { return }
+    guard let location = locations.first else { return }
+    userLocation = location
     
-    // 현재 위치 업데이트
-    currentLocation = location
-    
-    // 최초 1회만 현재 위치로 카메라 이동
-    let camera = GMSCameraPosition.camera(
-      withLatitude: location.coordinate.latitude,
-      longitude: location.coordinate.longitude,
-      zoom: 15
-    )
-    mapView.camera = camera
-    
-    locationManager.stopUpdatingLocation()
+    // 최초 위치 설정 시 카메라 이동
+    if userLocation == nil {
+      let camera = GMSCameraPosition.camera(
+        withLatitude: location.coordinate.latitude,
+        longitude: location.coordinate.longitude,
+        zoom: 15
+      )
+      mapView.animate(to: camera)
+    }
   }
   
   func locationManager(
@@ -614,25 +617,22 @@ extension MapViewController: CLLocationManagerDelegate {
   }
   
   func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
+    checkLocationAuthorization(status: manager.authorizationStatus)
+    
     switch manager.authorizationStatus {
     case .authorizedWhenInUse, .authorizedAlways:
       // 권한이 허용되면 즉시 위치 업데이트 시작
       locationManager.startUpdatingLocation()
-    case .denied, .restricted:
-      // 위치 권한이 거부된 경우 서울 좌표로 설정
-      setDefaultMapCamera()
-      showLocationAccessAlert()
-    case .notDetermined:
-      // 이미 요청 중
+    case .denied, .restricted, .notDetermined:
+      // 권한 없을 때 처리
       break
     @unknown default:
-      setDefaultMapCamera()
+      break
     }
   }
 }
 
 // MARK: - GMSMapViewDelegate
-
 extension MapViewController: GMSMapViewDelegate {
   func mapView(
     _ mapView: GMSMapView,
@@ -652,7 +652,6 @@ extension MapViewController: GMSMapViewDelegate {
     name: String,
     location: CLLocationCoordinate2D
   ) {
-    
-    fetchPlaceDetails(placeID: placeID)
+    getPlaceDetails(placeID: placeID)
   }
 }

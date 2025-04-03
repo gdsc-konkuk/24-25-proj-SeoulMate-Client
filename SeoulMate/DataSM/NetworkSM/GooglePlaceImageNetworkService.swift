@@ -10,12 +10,12 @@ import Combine
 import GooglePlaces
 import UIKit
 
-protocol PlaceImageNetworkServiceProtocol {
+protocol GooglePlaceImageNetworkServiceProtocol {
   func fetchPlaceImages(placeId: String, maxSize: CGSize) -> AnyPublisher<[PlaceImageDTO], Error>
   func fetchPlaceFirstImage(placeId: String, maxSize: CGSize) -> AnyPublisher<PlaceImageDTO?, Error>
 }
 
-final class PlaceImageNetworkService: PlaceImageNetworkServiceProtocol {
+final class GooglePlaceImageNetworkService: GooglePlaceImageNetworkServiceProtocol {
   private let networkService: NetworkServiceProtocol
   private let placesService: PlacesServiceProtocol
   

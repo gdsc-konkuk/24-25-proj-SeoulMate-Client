@@ -10,9 +10,9 @@ import Combine
 import UIKit
 
 final class PlaceImageRepository: PlaceImageRepositoryProtocol {
-  private let networkService: PlaceImageNetworkServiceProtocol
+  private let networkService: GooglePlaceImageNetworkServiceProtocol
   
-  init(networkService: PlaceImageNetworkServiceProtocol) {
+  init(networkService: GooglePlaceImageNetworkServiceProtocol) {
     self.networkService = networkService
   }
   

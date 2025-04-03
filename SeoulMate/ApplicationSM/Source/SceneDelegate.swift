@@ -7,6 +7,7 @@
 
 import UIKit
 import Combine
+import GooglePlaces
 
 class SceneDelegate: UIResponder, UIWindowSceneDelegate {
   
@@ -49,60 +50,9 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
   }
   
   private func registerDependencies() {
-    // TokenStorage
-    DIContainer.shared.register(type: TokenStorageProtocol.self) { _ in
-      return KeychainTokenStorage()
-    }
-    
-    // NetworkService
-    DIContainer.shared.register(type: NetworkServiceProtocol.self) { container in
-      let tokenStorage = container.resolve(type: TokenStorageProtocol.self)!
-      return NetworkService(tokenStorage: tokenStorage)
-    }
-    
-    // AuthRepository
-    DIContainer.shared.register(type: AuthRepositoryProtocol.self) { container in
-      let networkService = container.resolve(type: NetworkServiceProtocol.self)!
-      // Config.xcconfig에서 설정한 BASE_URL
-      let baseURL = Bundle.main.infoDictionary?["BASE_URL"] as? String ?? "https://api.seoulmate.com"
-      return AuthRepository(networkService: networkService, baseURL: baseURL)
-    }
-    
-    // LoginUseCase
-    DIContainer.shared.register(type: LoginUseCaseProtocol.self) { container in
-      let authRepository = container.resolve(type: AuthRepositoryProtocol.self)!
-      let tokenStorage = container.resolve(type: TokenStorageProtocol.self)!
-      return LoginUseCase(authRepository: authRepository, tokenStorage: tokenStorage)
-    }
-    
-    // GoogleAuthService
-    DIContainer.shared.register(type: GoogleAuthServiceProtocol.self) { _ in
-      return GoogleAuthService()
-    }
-    
-    // PlacesService
-    DIContainer.shared.register(type: PlacesServiceProtocol.self) { _ in
-      return PlacesService()
-    }
-    
-    // PlaceImageNetworkService
-    DIContainer.shared.register(type: PlaceImageNetworkServiceProtocol.self) { container in
-      let networkService = container.resolve(type: NetworkServiceProtocol.self)!
-      let placesService = container.resolve(type: PlacesServiceProtocol.self)!
-      return PlaceImageNetworkService(networkService: networkService, placesService: placesService)
-    }
-    
-    // PlaceImageRepository
-    DIContainer.shared.register(type: PlaceImageRepositoryProtocol.self) { container in
-      let networkService = container.resolve(type: PlaceImageNetworkServiceProtocol.self)!
-      return PlaceImageRepository(networkService: networkService)
-    }
-    
-    // FetchPlaceImagesUseCase
-    DIContainer.shared.register(type: FetchPlaceImagesUseCaseProtocol.self) { container in
-      let repository = container.resolve(type: PlaceImageRepositoryProtocol.self)!
-      return FetchPlaceImagesUseCase(repository: repository)
-    }
+    DIContainer.shared.registerNetworkDependencies()
+    DIContainer.shared.registerAuthDependencies()
+    DIContainer.shared.registerPlacesDependencies()
   }
   
   private func refreshTokenAndNavigate(window: UIWindow, refreshToken: String) {
