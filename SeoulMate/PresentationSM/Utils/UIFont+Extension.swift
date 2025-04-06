@@ -9,10 +9,10 @@ import UIKit
 
 extension UIFont {
   enum CustomFont: String {
-    case light = "SF-Pro-Display-Light"
-    case regular = "SF-Pro-Display-Regular"
-    case medium = "SF-Pro-Display-Medium"
-    case bold = "SF-Pro-Display-Bold"
+    case light = "SFProDisplay-Light"
+    case regular = "SFProDisplay-Regular"
+    case medium = "SFProDisplay-Medium"
+    case bold = "SFProDisplay-Bold"
   }
   
   static func lightFont(
