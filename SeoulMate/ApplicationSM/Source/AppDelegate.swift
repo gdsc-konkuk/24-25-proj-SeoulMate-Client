@@ -6,20 +6,28 @@
 //
 
 import UIKit
+import GoogleMaps
+import GooglePlaces
 import GoogleSignIn
 
 @main
 class AppDelegate: UIResponder, UIApplicationDelegate {
   
-  
-  
   func application(
     _ application: UIApplication,
     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
   ) -> Bool {
+    // Maps, Places
+    if let apiKey = Bundle.main.object(forInfoDictionaryKey: "GOOGLE_MAP_API_KEY") as? String {
+      GMSServices.provideAPIKey(apiKey)
+      GMSPlacesClient.provideAPIKey(apiKey)
+    } else {
+      // TODO: Alert
+    }
+    
     GIDSignIn.sharedInstance.restorePreviousSignIn { user, error in
       if let error = error {
-        print("로그인 상태 복원 실패: \(error.localizedDescription)")
+        // TODO: Alert
       } else if let user = user {
         print("사용자 \(user.profile?.email ?? "알 수 없음") 로그인 상태 복원됨")
         NotificationCenter.default.post(name: Notification.Name.userDidSignIn, object: nil)
