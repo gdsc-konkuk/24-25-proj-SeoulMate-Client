@@ -33,7 +33,7 @@
 		</dict>
 	</dict>
 	<key>GIDClientID</key>
-	<string>$(GOOGLE_CLIENT_ID)</string>
+	<string>$(GOOGLE_CLIENT_ID).apps.googleusercontent.com</string>
 	<key>GOOGLE_MAP_API_KEY</key>
 	<string>$(GOOGLE_MAP_API_KEY)</string>
 	<key>PRODUCT_BUNDLE_IDENTIFIER</key>
@@ -43,7 +43,7 @@
 		<dict>
 			<key>CFBundleURLSchemes</key>
 			<array>
-				<string>$(GOOGLE_CLIENT_ID)</string>
+				<string>com.googleusercontent.apps.$(GOOGLE_CLIENT_ID)</string>
 			</array>
 		</dict>
 	</array>
