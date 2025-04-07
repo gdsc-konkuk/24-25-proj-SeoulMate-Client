@@ -6,14 +6,13 @@
 //
 
 import UIKit
-
-protocol DynamicStackViewDelegate: AnyObject {
-  func dynamicStackView(_ stackView: DynamicStackView, didSelectItemAt index: Int, withTitle title: String)
-}
+import Combine
 
 final class DynamicStackView: UIStackView {
   
-  weak var delegate: DynamicStackViewDelegate?
+  // MARK: - Publisher
+  let selectionPublisher = PassthroughSubject<(index: Int, title: String, isSelected: Bool), Never>()
+  let selectedIndicesPublisher =  CurrentValueSubject<Set<Int>, Never>(Set<Int>())
   
   var verticalSpacing: CGFloat = 16
   var horizontalSpacing: CGFloat = 10
@@ -23,22 +22,34 @@ final class DynamicStackView: UIStackView {
   private var items: [String] = []
   private var horizontalStacks: [UIStackView] = []
   
-  private var selectedIndex: Int?
+  var isSingleSelectionMode: Bool = true {
+    didSet {
+      // 싱글 모드로 변경 시 기존 다중 선택 항목 초기화
+      if isSingleSelectionMode && selectedIndicesPublisher.value.count > 1 {
+        clearSelection()
+      }
+    }
+  }
   
+  // MARK: - UI Color
   var normalBackgroundColor: UIColor = .white
   var selectedBackgroundColor: UIColor = .black
   var normalTextColor: UIColor = .lightGray
   var selectedTextColor: UIColor = .white
   
+  private var subscriptions = Set<AnyCancellable>()
+  
   // MARK: - LifeCycle
   override init(frame: CGRect) {
     super.init(frame: frame)
     setupStackView()
+    setupBindings()
   }
   
   required init(coder: NSCoder) {
     super.init(coder: coder)
     setupStackView()
+    setupBindings()
   }
   
   func setItems(_ items: [String]) {
@@ -77,15 +88,15 @@ final class DynamicStackView: UIStackView {
     setNeedsLayout()
   }
   
-  func getSelectedIndex() -> Int? {
-    return selectedIndex
+  func getSelectedIndices() -> Set<Int> {
+    return selectedIndicesPublisher.value
   }
   
-  func getSelectedTitle() -> String? {
-    if let index = selectedIndex, index < items.count {
+  func getSelectedTitles() -> [String] {
+    return getSelectedIndices().compactMap { index in
+      guard index < items.count else { return nil }
       return items[index]
-    }
-    return nil
+    }.sorted()
   }
   
   func selectItem(at index: Int) {
@@ -94,16 +105,35 @@ final class DynamicStackView: UIStackView {
   }
   
   func clearSelection() {
-    selectedIndex = nil
-    
     for button in buttons {
       button.backgroundColor = normalBackgroundColor
       button.setTitleColor(normalTextColor, for: .normal)
     }
+    selectedIndicesPublisher.send(Set<Int>())
   }
 }
 
 extension DynamicStackView {
+  private func setupBindings() {
+    // 선택된 항목 변경 시 버튼 상태 동기화
+    selectedIndicesPublisher
+      .sink { [weak self] indices in
+        guard let self = self else { return }
+        
+        // 모든 버튼 초기화
+        for (buttonIndex, button) in self.buttons.enumerated() {
+          if indices.contains(buttonIndex) {
+            button.backgroundColor = self.selectedBackgroundColor
+            button.setTitleColor(self.selectedTextColor, for: .normal)
+          } else {
+            button.backgroundColor = self.normalBackgroundColor
+            button.setTitleColor(self.normalTextColor, for: .normal)
+          }
+        }
+      }
+      .store(in: &subscriptions)
+  }
+  
   private func setupStackView() {
     self.axis = .vertical
     alignment = .leading
@@ -118,12 +148,12 @@ extension DynamicStackView {
       titleColor: normalTextColor,
       backgroundColor: normalBackgroundColor
     )
-    
     button.tag = index
     button.addTarget(self, action: #selector(buttonTapped(_:)), for: .touchUpInside)
     
-    // 버튼에 패딩 추가
     button.contentEdgeInsets = UIEdgeInsets(top: 10, left: 18, bottom: 10, right: 18)
+    button.addTarget(self, action: #selector(buttonTouchDown(_:)), for: .touchDown)
+    button.addTarget(self, action: #selector(buttonTouchUp(_:)), for: [.touchUpInside, .touchUpOutside, .touchCancel])
     
     return button
   }
@@ -139,34 +169,65 @@ extension DynamicStackView {
 }
 
 extension DynamicStackView {
+  // 버튼 터치 시작 시 시각적 피드백
+  @objc private func buttonTouchDown(_ sender: UIButton) {
+    UIView.animate(withDuration: 0.1) {
+      sender.layer.borderColor = UIColor.cyan.cgColor
+      sender.layer.borderWidth = 2
+    }
+  }
+  
+  // 버튼 터치 종료 시 원래 상태로 복귀
+  @objc private func buttonTouchUp(_ sender: UIButton) {
+    UIView.animate(withDuration: 0.1) {
+      sender.layer.borderColor = UIColor.lightGray.cgColor
+      sender.layer.borderWidth = 1
+    }
+  }
+  
   @objc private func buttonTapped(_ sender: UIButton) {
     let index = sender.tag
     
-    if let selectedIndex = selectedIndex, selectedIndex != index {
-      // 이전에 선택된 버튼 초기화
-      if selectedIndex < buttons.count {
-        let previousButton = buttons[selectedIndex]
-        previousButton.backgroundColor = normalBackgroundColor
-        previousButton.setTitleColor(normalTextColor, for: .normal)
-      }
+    if isSingleSelectionMode {
+      handleSingleSelection(for: index)
+    } else {
+      handleMultiSelection(for: index)
     }
     
-    // 현재 버튼이 이미 선택되어 있는지 확인
-    if selectedIndex == index {
+    // 버튼에 햅틱 피드백 추가
+    let generator = UIImpactFeedbackGenerator(style: .light)
+    generator.impactOccurred()
+  }
+  
+  private func handleSingleSelection(for index: Int) {
+    let currentSelection = selectedIndicesPublisher.value
+    
+    // 이미 선택된 버튼을 다시 탭했는지 확인
+    if currentSelection.contains(index) {
       // 선택 해제
-      sender.backgroundColor = normalBackgroundColor
-      sender.setTitleColor(normalTextColor, for: .normal)
-      self.selectedIndex = nil
+      selectedIndicesPublisher.send([])
+      selectionPublisher.send((index: index, title: items[index], isSelected: false))
     } else {
-      // 선택
-      sender.backgroundColor = selectedBackgroundColor
-      sender.setTitleColor(selectedTextColor, for: .normal)
-      self.selectedIndex = index
-      
-      // 델리게이트 호출
-      if index < items.count {
-        delegate?.dynamicStackView(self, didSelectItemAt: index, withTitle: items[index])
-      }
+      // 새로운 선택
+      selectedIndicesPublisher.send([index])
+      selectionPublisher.send((index: index, title: items[index], isSelected: true))
     }
+  }
+  
+  private func handleMultiSelection(for index: Int) {
+    var currentSelection = selectedIndicesPublisher.value
+    
+    // 이미 선택된 버튼을 다시 탭했는지 확인
+    if currentSelection.contains(index) {
+      // 선택 해제
+      currentSelection.remove(index)
+      selectionPublisher.send((index: index, title: items[index], isSelected: false))
+    } else {
+      // 추가 선택
+      currentSelection.insert(index)
+      selectionPublisher.send((index: index, title: items[index], isSelected: true))
+    }
+    
+    selectedIndicesPublisher.send(currentSelection)
   }
 }
