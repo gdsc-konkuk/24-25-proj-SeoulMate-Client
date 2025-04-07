@@ -23,16 +23,19 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
       GMSPlacesClient.provideAPIKey(apiKey)
     } else {
       // TODO: Alert
+      print("Error: Google Map Api Key 설정 안됨")
     }
     
-    GIDSignIn.sharedInstance.restorePreviousSignIn { user, error in
-      if let error = error {
-        // TODO: Alert
-      } else if let user = user {
-        print("사용자 \(user.profile?.email ?? "알 수 없음") 로그인 상태 복원됨")
-        NotificationCenter.default.post(name: Notification.Name.userDidSignIn, object: nil)
-      }
+    if let clientID = Bundle.main.object(forInfoDictionaryKey: "GIDClientID") as? String {
+      GIDSignIn.sharedInstance.configuration = GIDConfiguration(clientID: clientID)
+    } else {
+      print("ERROR: Google Client ID가 Info.plist에 설정되지 않았습니다")
+      // TODO: Alert
     }
+    
+    // 로그인 상태 복원은 UserSessionManager에서 자동으로 처리됨
+    // 기존 코드는 제거하고 필요한 경우에만 직접 처리
+    
     return true
   }
   
@@ -59,7 +62,6 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     configurationForConnecting connectingSceneSession: UISceneSession,
     options: UIScene.ConnectionOptions
   ) -> UISceneConfiguration {
-    
     return UISceneConfiguration(name: "Default Configuration", sessionRole: connectingSceneSession.role)
   }
   
@@ -67,7 +69,5 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     _ application: UIApplication,
     didDiscardSceneSessions sceneSessions: Set<UISceneSession>
   ) {
-    
   }
 }
-

@@ -1,21 +1,24 @@
 //
-//  TravleWithViewController.swift
+//  TravelWithViewController.swift
 //  SeoulMate
 //
 //  Created by 박성근 on 4/7/25.
 //
 
 import UIKit
+import Combine
 import SnapKit
 import SwiftUI
 
-final class TravelWithController: UIViewController {
+final class TravelWithViewController: UIViewController {
   
   // MARK: - Properties
   private let companions = [
     "혼자", "친구랑", "연인이랑", "가족이랑", "여행", "출장/업무"
   ]
-  private var selectedCompanion: String?
+  
+  @Published private var selectedCompanion: String?
+  private var subscriptions = Set<AnyCancellable>()
   
   // MARK: - UI Properties
   private let progressBar: UIProgressView = {
@@ -51,12 +54,12 @@ final class TravelWithController: UIViewController {
   
   private lazy var companionStackView: DynamicStackView = {
     let stackView = DynamicStackView()
-    stackView.delegate = self
     stackView.normalBackgroundColor = .white
     stackView.selectedBackgroundColor = .black
     stackView.normalTextColor = .darkGray
     stackView.selectedTextColor = .white
     stackView.maxWidth = view.frame.width - 40
+    stackView.isSingleSelectionMode = true
     return stackView
   }()
   
@@ -67,6 +70,8 @@ final class TravelWithController: UIViewController {
       titleColor: .darkGray,
       backgroundColor: .lightGray
     )
+    button.isEnabled = false
+    button.alpha = 0.5
     return button
   }()
   
@@ -77,10 +82,11 @@ final class TravelWithController: UIViewController {
     setupCompanionStackView()
     setupConstraints()
     setupActions()
+    setupBindings()
   }
 }
 
-extension TravelWithController {
+extension TravelWithViewController {
   private func setupUI() {
     view.addSubview(progressBar)
     view.addSubview(backButton)
@@ -88,6 +94,8 @@ extension TravelWithController {
     view.addSubview(subtitleLabel)
     view.addSubview(companionStackView)
     view.addSubview(nextButton)
+    
+    view.backgroundColor = .white
   }
   
   private func setupCompanionStackView() {
@@ -138,6 +146,31 @@ extension TravelWithController {
     nextButton.addTarget(self, action: #selector(nextButtonTapped), for: .touchUpInside)
   }
   
+  private func setupBindings() {
+    companionStackView.selectionPublisher
+      .sink { [weak self] selectedItem in
+        guard let self = self else { return }
+        
+        if selectedItem.isSelected {
+          self.selectedCompanion = selectedItem.title
+        } else {
+          self.selectedCompanion = nil
+        }
+      }
+      .store(in: &subscriptions)
+    
+    $selectedCompanion
+      .map { $0 != nil }
+      .sink { [weak self] isEnabled in
+        guard let self = self else { return }
+        self.nextButton.isEnabled = isEnabled
+        self.nextButton.alpha = isEnabled ? 1.0 : 0.5
+        self.nextButton.backgroundColor = isEnabled ? .black : .lightGray
+        self.nextButton.setTitleColor(isEnabled ? .white : .darkGray, for: .normal)
+      }
+      .store(in: &subscriptions)
+  }
+  
   private func updateNextButton() {
     if selectedCompanion != nil {
       nextButton.backgroundColor = .black
@@ -154,26 +187,17 @@ extension TravelWithController {
 }
 
 // MARK: - Action Methods
-extension TravelWithController {
+extension TravelWithViewController {
   @objc private func backButtonTapped() {
     navigationController?.popViewController(animated: true)
   }
   
   @objc private func nextButtonTapped() {
     // TODO: pushViewController with data
-  }
-}
-
-// MARK: - DynamicStackViewDelegate
-extension TravelWithController: DynamicStackViewDelegate {
-  func dynamicStackView(_ stackView: DynamicStackView, didSelectItemAt index: Int, withTitle title: String) {
-    selectedCompanion = title
-    updateNextButton()
-  }
-}
-
-struct PreView2: PreviewProvider {
-  static var previews: some View {
-    TravelWithController().toPreview()
+    guard let selectedCompanion = selectedCompanion else { return }
+    
+    // TravelPurposeViewController로 이동
+    let travelPurposeVC = TravelPurposeViewController(travelCompanion: selectedCompanion)
+    navigationController?.pushViewController(travelPurposeVC, animated: true)
   }
 }
