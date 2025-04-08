@@ -9,17 +9,65 @@ import UIKit
 import CoreLocation
 import GoogleMaps
 import GoogleSignIn
+import GooglePlaces
 
 class MapViewController: UIViewController {
   
   // MARK: - Properties
   private let mapView = GMSMapView()
   private let locationManager = CLLocationManager()
+  private var placesClient: GMSPlacesClient!
   
   // 건국대학교 좌표
   private let initialLocation = CLLocationCoordinate2D(latitude: 37.540693, longitude: 127.079361)
   
-  // 로그아웃 버튼
+  // MARK: - UI Properties
+  private let searchContainerView: UIView = {
+    let view = UIView()
+    view.backgroundColor = .white
+    view.layer.cornerRadius = 30
+    view.layer.shadowColor = UIColor.black.cgColor
+    view.layer.shadowOffset = CGSize(width: 0, height: 2)
+    view.layer.shadowOpacity = 0.1
+    view.layer.shadowRadius = 4
+    return view
+  }()
+  
+  private let searchButton: UIButton = {
+    let button = UIButton(type: .system)
+    let config = UIImage.SymbolConfiguration(pointSize: 18, weight: .medium)
+    let searchIcon = UIImage(systemName: "magnifyingglass", withConfiguration: config)
+    button.setImage(searchIcon, for: .normal)
+    button.tintColor = .gray
+    button.contentMode = .scaleAspectFit
+    return button
+  }()
+  
+  private let textField: UITextField = {
+    let textField = UITextField()
+    textField.placeholder = "Gyeongbokgung"
+    textField.font = .regularFont(ofSize: 16)
+    textField.borderStyle = .none
+    textField.backgroundColor = .clear
+    textField.clearButtonMode = .whileEditing
+    textField.autocorrectionType = .no
+    textField.returnKeyType = .search
+    return textField
+  }()
+  
+  private let filterButton: UIButton = {
+    let button = UIButton()
+    button.backgroundColor = .black
+    button.layer.cornerRadius = 24
+    
+    let config = UIImage.SymbolConfiguration(pointSize: 18, weight: .medium)
+    let sliderImage = UIImage(systemName: "slider.horizontal.3", withConfiguration: config)
+    button.setImage(sliderImage, for: .normal)
+    button.tintColor = .white
+    
+    return button
+  }()
+  
   private lazy var logoutButton: UIButton = {
     let button = UIButton(type: .system)
     button.setTitle("로그아웃", for: .normal)
@@ -34,23 +82,57 @@ class MapViewController: UIViewController {
   override func viewDidLoad() {
     super.viewDidLoad()
     
-    // 위치 설정
-    setupLocationManager()
-    
-    // 지도 초기 설정
-    setupMapView()
-    
-    // UI
     setupUI()
+    setupActions()
+    setupLocationManager()
+    setupMapView()
+    setupPlacesAPI()
   }
   
   // MARK: - Setup
   private func setupUI() {
-    // 로그아웃 버튼 추가
+    view.addSubview(mapView)
+    
+    view.addSubview(searchContainerView)
+    searchContainerView.addSubview(searchButton)
+    searchContainerView.addSubview(textField)
+    view.addSubview(filterButton)
+    
     view.addSubview(logoutButton)
     
-    logoutButton.snp.makeConstraints { make in
+    mapView.snp.makeConstraints { make in
+      make.edges.equalToSuperview()
+    }
+    
+    searchContainerView.snp.makeConstraints { make in
       make.top.equalTo(view.safeAreaLayoutGuide.snp.top).offset(16)
+      make.leading.equalToSuperview().offset(16)
+      make.trailing.equalTo(filterButton.snp.leading).offset(-12)
+      make.height.equalTo(48)
+    }
+    
+    searchButton.snp.makeConstraints { make in
+      make.leading.equalTo(searchContainerView).offset(16)
+      make.centerY.equalTo(searchContainerView)
+      make.width.height.equalTo(24)
+    }
+    
+    textField.snp.makeConstraints { make in
+      make.leading.equalTo(searchButton.snp.trailing).offset(8)
+      make.trailing.equalTo(searchContainerView).offset(-16)
+      make.centerY.equalTo(searchContainerView)
+      make.height.equalTo(30)
+    }
+    
+    filterButton.snp.makeConstraints { make in
+      make.centerY.equalTo(searchContainerView)
+      make.trailing.equalToSuperview().offset(-16)
+      make.width.height.equalTo(48)
+    }
+    
+    // TODO: 삭제
+    logoutButton.snp.makeConstraints { make in
+      make.top.equalTo(view.safeAreaLayoutGuide.snp.top).offset(150)
       make.trailing.equalToSuperview().offset(-16)
       make.width.equalTo(80)
       make.height.equalTo(36)
@@ -75,14 +157,39 @@ class MapViewController: UIViewController {
     mapView.camera = camera
     mapView.settings.myLocationButton = true
     mapView.settings.compassButton = true
+  }
+  
+  private func setupActions() {
+    searchButton.addTarget(self, action: #selector(searchButtonTapped), for: .touchUpInside)
+    filterButton.addTarget(self, action: #selector(filterButtonTapped), for: .touchUpInside)
+    textField.delegate = self
+  }
+  
+  private func setupPlacesAPI() {
+    placesClient = GMSPlacesClient.shared()
+  }
+}
+
+// MARK: - Action methods
+extension MapViewController {
+  @objc private func searchButtonTapped() {
+    // 검색 실행
+    performSearch()
+  }
+  
+  private func performSearch() {
+    guard let searchText = textField.text, !searchText.isEmpty else { return }
     
+    // 키보드 닫기
+    textField.resignFirstResponder()
     
-    // UI Setting
-    view.addSubview(mapView)
-    
-    mapView.snp.makeConstraints { make in
-      make.edges.equalToSuperview()
-    }
+    // TODO: Places API -> 검색 기능 구현
+    print("검색어: \(searchText)")
+  }
+  
+  @objc private func filterButtonTapped() {
+    // 필터 기능 실행
+    // TODO: 필터 기능 구현
   }
 }
 
@@ -129,5 +236,13 @@ extension MapViewController: CLLocationManagerDelegate {
     })
     
     present(alert, animated: true)
+  }
+}
+
+// MARK: - UITextFieldDelegate
+extension MapViewController: UITextFieldDelegate {
+  func textFieldShouldReturn(_ textField: UITextField) -> Bool {
+    performSearch()
+    return true
   }
 }
