@@ -17,6 +17,16 @@ final class SocialLoginViewController: UIViewController {
     let label = UILabel()
     label.text = "SeoulMate"
     label.font = .boldFont(ofSize: 36)
+    label.textColor = .black
+    label.textAlignment = .center
+    return label
+  }()
+  
+  private let subtitleLabel: UILabel = {
+    let label = UILabel()
+    label.text = "서울 여행의 완벽한 파트너"
+    label.font = .mediumFont(ofSize: 18)
+    label.textColor = .darkGray
     label.textAlignment = .center
     return label
   }()
@@ -27,6 +37,14 @@ final class SocialLoginViewController: UIViewController {
     button.style = .wide
     button.colorScheme = .light
     return button
+  }()
+  
+  // 로딩 인디케이터
+  private let activityIndicator: UIActivityIndicatorView = {
+    let indicator = UIActivityIndicatorView(style: .large)
+    indicator.hidesWhenStopped = true
+    indicator.color = .gray
+    return indicator
   }()
   
   // MARK: - LifeCycle
@@ -42,10 +60,17 @@ extension SocialLoginViewController {
     view.backgroundColor = .white
     
     view.addSubview(titleLabel)
+    view.addSubview(subtitleLabel)
     view.addSubview(googleSignInButton)
+    view.addSubview(activityIndicator)
     
     titleLabel.snp.makeConstraints { make in
       make.top.equalToSuperview().offset(UIApplication.screenHeight * 0.3)
+      make.centerX.equalToSuperview()
+    }
+    
+    subtitleLabel.snp.makeConstraints { make in
+      make.top.equalTo(titleLabel.snp.bottom).offset(12)
       make.centerX.equalToSuperview()
     }
     
@@ -53,6 +78,10 @@ extension SocialLoginViewController {
       make.bottom.equalToSuperview().offset(-UIApplication.screenHeight * 0.15)
       make.centerX.equalToSuperview()
       make.width.equalTo(UIApplication.screenWidth * 0.7)
+    }
+    
+    activityIndicator.snp.makeConstraints { make in
+      make.center.equalToSuperview()
     }
   }
   
@@ -63,17 +92,30 @@ extension SocialLoginViewController {
 
 extension SocialLoginViewController {
   @objc private func handleGoogleSignIn() {
-    GIDSignIn.sharedInstance.signIn(withPresenting: self) { signInResult, error in
-      guard error == nil else { return }
-      
-      // If sign in succeeded, display the app's main content View.
-      NotificationCenter.default.post(name: Notification.Name.userDidSignIn, object: nil)
+    // 로딩 인디케이터 표시
+    activityIndicator.startAnimating()
+    googleSignInButton.isEnabled = false
+    
+    // UserSessionManager를 통한 Google 로그인 처리
+    UserSessionManager.shared.startGoogleSignIn(presentingViewController: self) { [weak self] success in
+      DispatchQueue.main.async {
+        self?.activityIndicator.stopAnimating()
+        self?.googleSignInButton.isEnabled = true
+        
+        if !success {
+          self?.showLoginErrorAlert()
+        }
+      }
     }
   }
-}
-
-struct PreView: PreviewProvider {
-    static var previews: some View {
-      SocialLoginViewController().toPreview()
-    }
+  
+  private func showLoginErrorAlert() {
+    let alert = UIAlertController(
+      title: "로그인 실패",
+      message: "Google 로그인에 실패했습니다. 다시 시도해주세요.",
+      preferredStyle: .alert
+    )
+    alert.addAction(UIAlertAction(title: "확인", style: .default))
+    present(alert, animated: true)
+  }
 }
