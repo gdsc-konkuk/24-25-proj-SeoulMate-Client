@@ -137,7 +137,7 @@ extension TravelPurposeViewController {
   
   private func setupConstraints() {
     progressBar.snp.makeConstraints { make in
-      make.top.equalTo(view.safeAreaLayoutGuide.snp.top)
+      make.top.equalTo(view.safeAreaLayoutGuide.snp.top).inset(20)
       make.leading.equalToSuperview().offset(20)
       make.trailing.equalToSuperview().offset(-20)
       make.height.equalTo(4)
