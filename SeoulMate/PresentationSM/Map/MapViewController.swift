@@ -17,6 +17,7 @@ class MapViewController: UIViewController {
   private let mapView = GMSMapView()
   private let locationManager = CLLocationManager()
   private var placesClient: GMSPlacesClient!
+  private var searchResults: [GMSAutocompletePrediction] = []
   
   // 건국대학교 좌표
   private let initialLocation = CLLocationCoordinate2D(latitude: 37.540693, longitude: 127.079361)
@@ -31,6 +32,18 @@ class MapViewController: UIViewController {
     view.layer.shadowOpacity = 0.1
     view.layer.shadowRadius = 4
     return view
+  }()
+  
+  private lazy var resultsTableView: UITableView = {
+    let tableView = UITableView()
+    tableView.backgroundColor = .white
+    tableView.register(PlaceCell.self, forCellReuseIdentifier: PlaceCell.identifier)
+    tableView.delegate = self
+    tableView.dataSource = self
+    tableView.isHidden = true
+    tableView.separatorStyle = .singleLine
+    tableView.separatorInset = UIEdgeInsets(top: 0, left: 82, bottom: 0, right: 0)
+    return tableView
   }()
   
   private let searchButton: UIButton = {
@@ -87,6 +100,7 @@ class MapViewController: UIViewController {
     setupLocationManager()
     setupMapView()
     setupPlacesAPI()
+    setupMapTapGesture()
   }
   
   // MARK: - Setup
@@ -99,6 +113,7 @@ class MapViewController: UIViewController {
     view.addSubview(filterButton)
     
     view.addSubview(logoutButton)
+    view.addSubview(resultsTableView)
     
     mapView.snp.makeConstraints { make in
       make.edges.equalToSuperview()
@@ -137,6 +152,13 @@ class MapViewController: UIViewController {
       make.width.equalTo(80)
       make.height.equalTo(36)
     }
+    
+    resultsTableView.snp.makeConstraints { make in
+      make.top.equalTo(searchContainerView.snp.bottom).offset(8)
+      make.leading.equalTo(searchContainerView)
+      make.trailing.equalTo(filterButton)
+      make.height.equalTo(0) // 처음에는 높이 0
+    }
   }
   
   private func setupLocationManager() {
@@ -168,6 +190,38 @@ class MapViewController: UIViewController {
   private func setupPlacesAPI() {
     placesClient = GMSPlacesClient.shared()
   }
+  
+  private func setupMapTapGesture() {
+    let tapGesture = UITapGestureRecognizer(target: self, action: #selector(mapTapped))
+    mapView.addGestureRecognizer(tapGesture)
+  }
+  
+  private func showResultsTableView() {
+    DispatchQueue.main.async {
+      self.resultsTableView.reloadData()
+      
+      UIView.animate(withDuration: 0.3) {
+        self.resultsTableView.isHidden = false
+        self.resultsTableView.snp.updateConstraints { make in
+          // 최대 5개 결과만 표시 (또는 결과 개수에 따라 조정)
+          let height = min(self.searchResults.count, 5) * 44
+          make.height.equalTo(height)
+        }
+        self.view.layoutIfNeeded()
+      }
+    }
+  }
+  
+  private func hideResultsTableView() {
+    UIView.animate(withDuration: 0.3) {
+      self.resultsTableView.snp.updateConstraints { make in
+        make.height.equalTo(0)
+      }
+      self.view.layoutIfNeeded()
+    } completion: { _ in
+      self.resultsTableView.isHidden = true
+    }
+  }
 }
 
 // MARK: - Action methods
@@ -180,16 +234,44 @@ extension MapViewController {
   private func performSearch() {
     guard let searchText = textField.text, !searchText.isEmpty else { return }
     
-    // 키보드 닫기
-    textField.resignFirstResponder()
+    // Places API를 사용하여 자동 완성 요청
+    let filter = GMSAutocompleteFilter()
+    filter.countries = ["KR"]    // 한국으로 제한
     
-    // TODO: Places API -> 검색 기능 구현
-    print("검색어: \(searchText)")
+    placesClient.findAutocompletePredictions(
+      fromQuery: searchText,
+      filter: filter,
+      sessionToken: nil
+    ) { [weak self] (predictions, error) in
+      guard let self = self else { return }
+      
+      if let error = error {
+        print("장소 검색 오류: \(error.localizedDescription)")
+        return
+      }
+      
+      guard let predictions = predictions, !predictions.isEmpty else {
+        print("검색 결과가 없습니다.")
+        self.hideResultsTableView()
+        return
+      }
+      
+      // 결과 저장 및 테이블뷰 표시
+      self.searchResults = predictions
+      self.showResultsTableView()
+    }
   }
   
   @objc private func filterButtonTapped() {
     // 필터 기능 실행
     // TODO: 필터 기능 구현
+  }
+  
+  @objc private func mapTapped() {
+    if !resultsTableView.isHidden {
+      hideResultsTableView()
+      textField.resignFirstResponder()
+    }
   }
 }
 
@@ -244,5 +326,55 @@ extension MapViewController: UITextFieldDelegate {
   func textFieldShouldReturn(_ textField: UITextField) -> Bool {
     performSearch()
     return true
+  }
+  
+  func textFieldDidChangeSelection(_ textField: UITextField) {
+    // 텍스트가 비어있으면 결과 테이블 숨기기
+    if let text = textField.text, text.isEmpty {
+      hideResultsTableView()
+    }
+    performSearch()
+  }
+  
+  func textFieldShouldClear(_ textField: UITextField) -> Bool {
+    DispatchQueue.main.async {
+      self.hideResultsTableView()
+    }
+    return true
+  }
+}
+
+// MARK: - UITableViewDelegate, UITableViewDataSource
+extension MapViewController: UITableViewDelegate, UITableViewDataSource {
+  func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
+    return searchResults.count
+  }
+  
+  func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
+    guard let cell = tableView.dequeueReusableCell(withIdentifier: PlaceCell.identifier, for: indexPath) as? PlaceCell else {
+      return UITableViewCell()
+    }
+    
+    let prediction = searchResults[indexPath.row]
+    let placeName = prediction.attributedPrimaryText.string
+    
+    cell.configure(with: placeName)
+    
+    return cell
+  }
+  
+  func tableView(_ tableView: UITableView, heightForRowAt indexPath: IndexPath) -> CGFloat {
+    return 44
+  }
+  
+  func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
+    let selectedPlace = searchResults[indexPath.row]
+    textField.text = selectedPlace.attributedPrimaryText.string
+    
+    // TODO: 상세 정보 가져오기
+    
+    // 테이블 숨기기 및 키보드 내리기
+    hideResultsTableView()
+    textField.resignFirstResponder()
   }
 }
