@@ -250,16 +250,7 @@ extension TravelPurposeViewController {
   
   @objc private func nextButtonTapped() {
     // TODO: pushViewController with data
-    // 온보딩 완료 처리
-    UserSessionManager.shared.completeOnboarding()
-    
-    // 탭바 컨트롤러로 이동 (루트 컨트롤러로 설정)
-    let tabBarController = TabBarController()
-    
-    if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
-       let window = windowScene.windows.first {
-        window.rootViewController = tabBarController
-        window.makeKeyAndVisible()
-    }
+    let signInVC = SignInCompleteViewController()
+    navigationController?.pushViewController(signInVC, animated: true)
   }
 }
