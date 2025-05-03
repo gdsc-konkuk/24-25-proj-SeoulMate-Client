@@ -81,16 +81,6 @@ class MapViewController: UIViewController {
     return button
   }()
   
-  private lazy var logoutButton: UIButton = {
-    let button = UIButton(type: .system)
-    button.setTitle("로그아웃", for: .normal)
-    button.setTitleColor(.white, for: .normal)
-    button.backgroundColor = .systemRed
-    button.layer.cornerRadius = 8
-    button.addTarget(self, action: #selector(logoutButtonTapped), for: .touchUpInside)
-    return button
-  }()
-  
   // MARK: - Lifecycle
   override func viewDidLoad() {
     super.viewDidLoad()
@@ -111,8 +101,6 @@ class MapViewController: UIViewController {
     searchContainerView.addSubview(searchButton)
     searchContainerView.addSubview(textField)
     view.addSubview(filterButton)
-    
-    view.addSubview(logoutButton)
     view.addSubview(resultsTableView)
     
     mapView.snp.makeConstraints { make in
@@ -143,14 +131,6 @@ class MapViewController: UIViewController {
       make.centerY.equalTo(searchContainerView)
       make.trailing.equalToSuperview().offset(-16)
       make.width.height.equalTo(48)
-    }
-    
-    // TODO: 삭제
-    logoutButton.snp.makeConstraints { make in
-      make.top.equalTo(view.safeAreaLayoutGuide.snp.top).offset(150)
-      make.trailing.equalToSuperview().offset(-16)
-      make.width.equalTo(80)
-      make.height.equalTo(36)
     }
     
     resultsTableView.snp.makeConstraints { make in
@@ -300,24 +280,6 @@ extension MapViewController: CLLocationManagerDelegate {
     default:
       break
     }
-  }
-  
-  // MARK: - Actions
-  @objc private func logoutButtonTapped() {
-    // 로그아웃 확인 알림창
-    let alert = UIAlertController(
-      title: "로그아웃",
-      message: "정말 로그아웃 하시겠습니까?",
-      preferredStyle: .alert
-    )
-    
-    alert.addAction(UIAlertAction(title: "취소", style: .cancel))
-    alert.addAction(UIAlertAction(title: "로그아웃", style: .destructive) { [weak self] _ in
-      // 로그아웃 처리
-      UserSessionManager.shared.signOut()
-    })
-    
-    present(alert, animated: true)
   }
 }
 
