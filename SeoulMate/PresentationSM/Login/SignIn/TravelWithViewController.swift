@@ -14,51 +14,62 @@ final class TravelWithViewController: UIViewController {
   
   // MARK: - Properties
   private let companions = [
-    "혼자", "친구랑", "연인이랑", "가족이랑", "여행", "출장/업무"
+    "Alone", "Friends", "Parents", "Lover", "Spouse", "Children", "etc."
   ]
   
   @Published private var selectedCompanion: String?
   private var subscriptions = Set<AnyCancellable>()
   
   // MARK: - UI Properties
-  private let progressBar: UIProgressView = {
-    let progressBar = UIProgressView()
-    progressBar.progressTintColor = .black
-    progressBar.trackTintColor = .lightGray
-    progressBar.progress = 0.5
-    return progressBar
+  private let navigationBarStackView: UIStackView = {
+    let stackView = UIStackView()
+    stackView.axis = .horizontal
+    stackView.alignment = .center
+    stackView.distribution = .fill
+    return stackView
   }()
   
   private let backButton: UIButton = {
     let button = UIButton()
     button.setImage(UIImage(systemName: "arrow.left"), for: .normal)
-    button.tintColor = .black
+    button.tintColor = .gray900
     return button
+  }()
+  
+  private let stepCountLabel: UILabel = {
+    let label = UILabel()
+    label.text = "1/2"
+    label.font = .mediumFont(ofSize: 20)
+    label.textColor = .gray400
+    return label
   }()
   
   private let titleLabel: UILabel = {
     let label = UILabel()
-    label.text = "누구랑 여행하는지"
-    label.font = .boldFont(ofSize: 22)
-    label.textColor = .black
+    label.text = "Let's Start!"
+    label.font = .boldFont(ofSize: 24)
+    label.textColor = .gray900
     return label
+  }()
+  
+  private let progressBar: UIProgressView = {
+    let progressBar = UIProgressView()
+    progressBar.progressTintColor = .main500
+    progressBar.trackTintColor = .gray200
+    progressBar.progress = 0.5
+    return progressBar
   }()
   
   private let subtitleLabel: UILabel = {
     let label = UILabel()
-    label.text = "Descripton"
-    label.font = .mediumFont(ofSize: 16)
-    label.textColor = .darkGray
+    label.text = "Who are you traveling with?"
+    label.font = .mediumFont(ofSize: 18)
+    label.textColor = .gray900
     return label
   }()
   
   private lazy var companionStackView: DynamicStackView = {
     let stackView = DynamicStackView()
-    stackView.normalBackgroundColor = .white
-    stackView.selectedBackgroundColor = .black
-    stackView.normalTextColor = .darkGray
-    stackView.selectedTextColor = .white
-    stackView.maxWidth = view.frame.width - 40
     stackView.isSingleSelectionMode = true
     return stackView
   }()
@@ -67,8 +78,8 @@ final class TravelWithViewController: UIViewController {
     let button = CommonRectangleButton(
       title: "Next",
       fontStyle: .boldFont(ofSize: 18),
-      titleColor: .darkGray,
-      backgroundColor: .lightGray
+      titleColor: .gray400,
+      backgroundColor: .gray200
     )
     button.isEnabled = false
     button.alpha = 0.5
@@ -88,9 +99,19 @@ final class TravelWithViewController: UIViewController {
 
 extension TravelWithViewController {
   private func setupUI() {
-    view.addSubview(progressBar)
-    view.addSubview(backButton)
+    view.backgroundColor = .white
+    
+    let spacer = UIView()
+    spacer.setContentHuggingPriority(.defaultLow, for: .horizontal)
+    spacer.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+    
+    navigationBarStackView.addArrangedSubview(backButton)
+    navigationBarStackView.addArrangedSubview(spacer)
+    navigationBarStackView.addArrangedSubview(stepCountLabel)
+    
+    view.addSubview(navigationBarStackView)
     view.addSubview(titleLabel)
+    view.addSubview(progressBar)
     view.addSubview(subtitleLabel)
     view.addSubview(companionStackView)
     view.addSubview(nextButton)
@@ -103,16 +124,14 @@ extension TravelWithViewController {
   }
   
   private func setupConstraints() {
-    progressBar.snp.makeConstraints { make in
+    navigationBarStackView.snp.makeConstraints { make in
       make.top.equalTo(view.safeAreaLayoutGuide.snp.top).inset(20)
       make.leading.equalToSuperview().offset(20)
       make.trailing.equalToSuperview().offset(-20)
-      make.height.equalTo(3)
+      make.height.equalTo(24)
     }
     
     backButton.snp.makeConstraints { make in
-      make.top.equalTo(progressBar.snp.bottom).offset(30)
-      make.leading.equalToSuperview().offset(20)
       make.width.height.equalTo(24)
     }
     
@@ -122,15 +141,22 @@ extension TravelWithViewController {
       make.height.equalTo(26)
     }
     
+    progressBar.snp.makeConstraints { make in
+      make.top.equalTo(titleLabel.snp.bottom).offset(20)
+      make.leading.equalToSuperview().offset(20)
+      make.trailing.equalToSuperview().offset(-20)
+      make.height.equalTo(3)
+    }
+    
     subtitleLabel.snp.makeConstraints { make in
-      make.top.equalTo(titleLabel.snp.bottom).offset(14)
+      make.top.equalTo(progressBar.snp.bottom).offset(14)
       make.leading.equalToSuperview().offset(20)
     }
     
     companionStackView.snp.makeConstraints { make in
       make.top.equalToSuperview().offset(UIApplication.screenHeight * 0.3)
       make.leading.equalToSuperview().offset(20)
-      make.height.equalTo(100)
+//      make.height.equalTo(100)
     }
     
     nextButton.snp.makeConstraints { make in
@@ -165,24 +191,10 @@ extension TravelWithViewController {
         guard let self = self else { return }
         self.nextButton.isEnabled = isEnabled
         self.nextButton.alpha = isEnabled ? 1.0 : 0.5
-        self.nextButton.backgroundColor = isEnabled ? .black : .lightGray
-        self.nextButton.setTitleColor(isEnabled ? .white : .darkGray, for: .normal)
+        self.nextButton.backgroundColor = isEnabled ? .main500 : .gray200
+        self.nextButton.setTitleColor(isEnabled ? .white : .gray400, for: .normal)
       }
       .store(in: &subscriptions)
-  }
-  
-  private func updateNextButton() {
-    if selectedCompanion != nil {
-      nextButton.backgroundColor = .black
-      nextButton.titleLabel?.textColor = .white
-      nextButton.isEnabled = true
-      nextButton.alpha = 1.0
-    } else {
-      nextButton.backgroundColor = .lightGray
-      nextButton.titleLabel?.textColor = .darkGray
-      nextButton.isEnabled = false
-      nextButton.alpha = 0.5
-    }
   }
 }
 

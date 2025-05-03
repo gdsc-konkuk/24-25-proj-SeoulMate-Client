@@ -16,19 +16,19 @@ final class TravelPurposeViewController: UIViewController {
   private let travelCompanion: String
   
   private let purposes = [
-    "관광", "쇼핑", "출장/업무"
+    "Activities", "Nature", "Shopping", "SNS hot places", "Culture-Art-History", "Eating", "Tourist spot"
   ]
   
   @Published private var selectedPurposes: [String] = []
   private var subscriptions = Set<AnyCancellable>()
   
   // MARK: - UI Properties
-  private let progressBar: UIProgressView = {
-    let progressBar = UIProgressView()
-    progressBar.progressTintColor = .black
-    progressBar.trackTintColor = .lightGray
-    progressBar.progress = 1.0
-    return progressBar
+  private let navigationBarStackView: UIStackView = {
+    let stackView = UIStackView()
+    stackView.axis = .horizontal
+    stackView.alignment = .center
+    stackView.distribution = .fill
+    return stackView
   }()
   
   private let backButton: UIButton = {
@@ -38,33 +38,41 @@ final class TravelPurposeViewController: UIViewController {
     return button
   }()
   
+  private let stepCountLabel: UILabel = {
+    let label = UILabel()
+    label.text = "2/2"
+    label.font = .mediumFont(ofSize: 20)
+    label.textColor = .gray400
+    return label
+  }()
+  
   private let titleLabel: UILabel = {
     let label = UILabel()
-    label.text = "여행 목적"
-    label.font = .boldFont(ofSize: 22)
-    label.textColor = .black
+    label.text = "Almost Done.."
+    label.font = .boldFont(ofSize: 24)
+    label.textColor = .gray900
     return label
+  }()
+  
+  private let progressBar: UIProgressView = {
+    let progressBar = UIProgressView()
+    progressBar.progressTintColor = .main500
+    progressBar.trackTintColor = .main500
+    progressBar.progress = 1.0
+    return progressBar
   }()
   
   private let subtitleLabel: UILabel = {
     let label = UILabel()
-    label.text = "여행의 목적을 선택해주세요"
-    label.font = .mediumFont(ofSize: 16)
-    label.textColor = .darkGray
-    return label
-  }()
-  
-  private let infoLabel: UILabel = {
-    let label = UILabel()
-    label.text = "중복 선택 가능"
-    label.font = .mediumFont(ofSize: 14)
-    label.textColor = .lightGray
+    label.text = "What style of travel are you planning to take?"
+    label.font = .mediumFont(ofSize: 18)
+    label.textColor = .gray900
     return label
   }()
   
   private let selectedPurposesLabel: UILabel = {
     let label = UILabel()
-    label.text = "선택한 목적: 없음"
+    label.text = "Selected Purpose: "
     label.font = .mediumFont(ofSize: 14)
     label.textColor = .gray
     label.numberOfLines = 0
@@ -73,28 +81,23 @@ final class TravelPurposeViewController: UIViewController {
   
   private lazy var purposeStackView: DynamicStackView = {
     let stackView = DynamicStackView()
-    stackView.normalBackgroundColor = .white
-    stackView.selectedBackgroundColor = .black
-    stackView.normalTextColor = .darkGray
-    stackView.selectedTextColor = .white
-    stackView.maxWidth = view.frame.width - 40
-    stackView.isSingleSelectionMode = false // 다중 선택 모드로 설정
+    // MARK: 다중 선택 모드
+    stackView.isSingleSelectionMode = false
     return stackView
   }()
   
   private let nextButton: CommonRectangleButton = {
     let button = CommonRectangleButton(
-      title: "다음",
+      title: "Next",
       fontStyle: .boldFont(ofSize: 18),
-      titleColor: .darkGray,
-      backgroundColor: .lightGray
+      titleColor: .gray400,
+      backgroundColor: .gray200
     )
     button.isEnabled = false
     button.alpha = 0.5
     return button
   }()
   
-  // MARK: - Init
   // MARK: - Initializer
   init(travelCompanion: String) {
     self.travelCompanion = travelCompanion
@@ -121,10 +124,17 @@ extension TravelPurposeViewController {
     view.backgroundColor = .white
     navigationController?.isNavigationBarHidden = true
     
-    view.addSubview(progressBar)
-    view.addSubview(backButton)
+    let spacer = UIView()
+    spacer.setContentHuggingPriority(.defaultLow, for: .horizontal)
+    spacer.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+    
+    navigationBarStackView.addArrangedSubview(backButton)
+    navigationBarStackView.addArrangedSubview(spacer)
+    navigationBarStackView.addArrangedSubview(stepCountLabel)
+    
+    view.addSubview(navigationBarStackView)
     view.addSubview(titleLabel)
-    view.addSubview(infoLabel)
+    view.addSubview(progressBar)
     view.addSubview(subtitleLabel)
     view.addSubview(purposeStackView)
     view.addSubview(selectedPurposesLabel)
@@ -136,17 +146,21 @@ extension TravelPurposeViewController {
   }
   
   private func setupConstraints() {
-    progressBar.snp.makeConstraints { make in
+    navigationBarStackView.snp.makeConstraints { make in
       make.top.equalTo(view.safeAreaLayoutGuide.snp.top).inset(20)
       make.leading.equalToSuperview().offset(20)
       make.trailing.equalToSuperview().offset(-20)
-      make.height.equalTo(4)
+      make.height.equalTo(24)
     }
     
     backButton.snp.makeConstraints { make in
-      make.top.equalTo(progressBar.snp.bottom).offset(30)
-      make.leading.equalToSuperview().offset(20)
       make.width.height.equalTo(24)
+    }
+    
+    titleLabel.snp.makeConstraints { make in
+      make.top.equalTo(navigationBarStackView.snp.bottom).offset(30)
+      make.leading.equalToSuperview().offset(20)
+      make.height.equalTo(26)
     }
     
     titleLabel.snp.makeConstraints { make in
@@ -155,13 +169,15 @@ extension TravelPurposeViewController {
       make.height.equalTo(26)
     }
     
-    infoLabel.snp.makeConstraints { make in
-      make.centerY.equalTo(titleLabel.snp.centerY)
+    progressBar.snp.makeConstraints { make in
+      make.top.equalTo(titleLabel.snp.bottom).offset(20)
+      make.leading.equalToSuperview().offset(20)
       make.trailing.equalToSuperview().offset(-20)
+      make.height.equalTo(3)
     }
     
     subtitleLabel.snp.makeConstraints { make in
-      make.top.equalTo(titleLabel.snp.bottom).offset(14)
+      make.top.equalTo(progressBar.snp.bottom).offset(14)
       make.leading.equalToSuperview().offset(20)
     }
     
@@ -223,7 +239,7 @@ extension TravelPurposeViewController {
     // 선택된 목적 목록 변경 시 UI 업데이트
     $selectedPurposes
       .map { purposes -> String in
-        purposes.isEmpty ? "선택한 목적: 없음" : "선택한 목적: \(purposes.joined(separator: ", "))"
+        purposes.isEmpty ? "Selected Purpose: None" : "Selected Purpose: \(purposes.joined(separator: ", "))"
       }
       .assign(to: \.text, on: selectedPurposesLabel)
       .store(in: &subscriptions)
@@ -235,8 +251,8 @@ extension TravelPurposeViewController {
         guard let self = self else { return }
         self.nextButton.isEnabled = isEnabled
         self.nextButton.alpha = isEnabled ? 1.0 : 0.5
-        self.nextButton.backgroundColor = isEnabled ? .black : .lightGray
-        self.nextButton.setTitleColor(isEnabled ? .white : .darkGray, for: .normal)
+        self.nextButton.backgroundColor = isEnabled ? .main500 : .gray200
+        self.nextButton.setTitleColor(isEnabled ? .white : .gray400, for: .normal)
       }
       .store(in: &subscriptions)
   }

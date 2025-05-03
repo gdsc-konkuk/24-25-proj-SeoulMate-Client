@@ -8,6 +8,7 @@
 import UIKit
 import SnapKit
 
+// TODO: Setting 해야함.
 enum TabItems: Int, CaseIterable {
   case map
   case aiChat
@@ -60,7 +61,7 @@ class TabBarController: UIViewController {
   // MARK: - UI Components
   private let tabBarView: UIView = {
     let view = UIView()
-    view.backgroundColor = .systemBackground
+    view.backgroundColor = .white
     view.layer.shadowColor = UIColor.black.cgColor
     view.layer.shadowOffset = CGSize(width: 0, height: -2)
     view.layer.shadowOpacity = 0.1

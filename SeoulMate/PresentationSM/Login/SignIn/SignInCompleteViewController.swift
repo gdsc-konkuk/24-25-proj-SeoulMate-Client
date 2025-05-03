@@ -13,7 +13,7 @@ final class SignInCompleteViewController: UIViewController {
   // MARK: - UI Properties
   private let circleView: UIView = {
     let view = UIView()
-    view.backgroundColor = UIColor.lightGray.withAlphaComponent(0.3)
+    view.backgroundColor = .main100
     view.layer.cornerRadius = 50
     return view
   }()
@@ -23,7 +23,7 @@ final class SignInCompleteViewController: UIViewController {
     let config = UIImage.SymbolConfiguration(pointSize: 30, weight: .bold)
     let image = UIImage(systemName: "checkmark", withConfiguration: config)
     imageView.image = image
-    imageView.tintColor = .black
+    imageView.tintColor = .main500
     imageView.contentMode = .scaleAspectFit
     return imageView
   }()
@@ -33,15 +33,15 @@ final class SignInCompleteViewController: UIViewController {
     label.font = .boldFont(ofSize: 20)
     label.textColor = .black
     label.textAlignment = .center
-    label.text = "생성 완료!"
+    label.text = "Completed!"
     return label
   }()
   
   private let nextButton: UIButton = {
     let button = UIButton()
-    button.setTitle("Next", for: .normal)
+    button.setTitle("Let's start", for: .normal)
     button.titleLabel?.font = .boldFont(ofSize: 18)
-    button.backgroundColor = .black
+    button.backgroundColor = .main500
     button.setTitleColor(.white, for: .normal)
     button.layer.cornerRadius = 25
     return button
@@ -70,7 +70,7 @@ final class SignInCompleteViewController: UIViewController {
 // MARK: - UI Setup
 extension SignInCompleteViewController {
   private func setupUI() {
-    view.backgroundColor = .white
+    view.backgroundColor = .gray50
     
     view.addSubview(circleView)
     circleView.addSubview(checkmarkImageView)
@@ -81,13 +81,14 @@ extension SignInCompleteViewController {
   
   private func setupConstraints() {
     circleView.snp.makeConstraints { make in
-      make.center.equalToSuperview()
-      make.width.height.equalTo(100)
+        make.top.equalTo(view.safeAreaLayoutGuide.snp.top).inset(UIApplication.screenHeight * 0.3)
+        make.centerX.equalToSuperview()
+        make.width.height.equalTo(100)
     }
     
     checkmarkImageView.snp.makeConstraints { make in
-      make.center.equalToSuperview()
-      make.width.height.equalTo(40)
+        make.center.equalTo(circleView)
+        make.width.height.equalTo(40)
     }
     
     titleLabel.snp.makeConstraints { make in

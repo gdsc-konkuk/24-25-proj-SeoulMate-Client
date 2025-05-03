@@ -11,7 +11,7 @@ final class CommonRectangleButton: UIButton {
   init(
     title: String = "",
     fontStyle: UIFont,
-    titleColor: UIColor = .white,
+    titleColor: UIColor = UIColor.gray200,
     backgroundColor: UIColor,
     corners: [UIRectCorner] = [.allCorners],
     radius: CGFloat = 16
@@ -22,7 +22,7 @@ final class CommonRectangleButton: UIButton {
     titleLabel?.font = fontStyle
     setTitleColor(titleColor, for: .normal)
     self.backgroundColor = backgroundColor
-    self.layer.borderColor = UIColor.lightGray.cgColor
+    self.layer.borderColor = UIColor.gray200.cgColor
     self.layer.borderWidth = 1
     cornerRadius(corners, radius: radius)
   }
