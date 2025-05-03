@@ -33,9 +33,9 @@ final class DynamicStackView: UIStackView {
   
   // MARK: - UI Color
   var normalBackgroundColor: UIColor = .white
-  var selectedBackgroundColor: UIColor = .black
-  var normalTextColor: UIColor = .lightGray
-  var selectedTextColor: UIColor = .white
+  var selectedBackgroundColor: UIColor = .main100
+  var normalTextColor: UIColor = .gray500
+  var selectedTextColor: UIColor = .main500
   
   private var subscriptions = Set<AnyCancellable>()
   
@@ -108,6 +108,8 @@ final class DynamicStackView: UIStackView {
     for button in buttons {
       button.backgroundColor = normalBackgroundColor
       button.setTitleColor(normalTextColor, for: .normal)
+      button.layer.borderColor = UIColor.gray500.cgColor
+      button.layer.borderWidth = 1
     }
     selectedIndicesPublisher.send(Set<Int>())
   }
@@ -125,9 +127,13 @@ extension DynamicStackView {
           if indices.contains(buttonIndex) {
             button.backgroundColor = self.selectedBackgroundColor
             button.setTitleColor(self.selectedTextColor, for: .normal)
+            button.layer.borderColor = UIColor.main500.cgColor
+            button.layer.borderWidth = 1
           } else {
             button.backgroundColor = self.normalBackgroundColor
             button.setTitleColor(self.normalTextColor, for: .normal)
+            button.layer.borderColor = UIColor.gray500.cgColor
+            button.layer.borderWidth = 1
           }
         }
       }
@@ -152,8 +158,8 @@ extension DynamicStackView {
     button.addTarget(self, action: #selector(buttonTapped(_:)), for: .touchUpInside)
     
     button.contentEdgeInsets = UIEdgeInsets(top: 10, left: 18, bottom: 10, right: 18)
-    button.addTarget(self, action: #selector(buttonTouchDown(_:)), for: .touchDown)
-    button.addTarget(self, action: #selector(buttonTouchUp(_:)), for: [.touchUpInside, .touchUpOutside, .touchCancel])
+    button.layer.borderWidth = 1
+        button.layer.borderColor = UIColor.gray500.cgColor
     
     return button
   }
@@ -169,22 +175,6 @@ extension DynamicStackView {
 }
 
 extension DynamicStackView {
-  // 버튼 터치 시작 시 시각적 피드백
-  @objc private func buttonTouchDown(_ sender: UIButton) {
-    UIView.animate(withDuration: 0.1) {
-      sender.layer.borderColor = UIColor.cyan.cgColor
-      sender.layer.borderWidth = 2
-    }
-  }
-  
-  // 버튼 터치 종료 시 원래 상태로 복귀
-  @objc private func buttonTouchUp(_ sender: UIButton) {
-    UIView.animate(withDuration: 0.1) {
-      sender.layer.borderColor = UIColor.lightGray.cgColor
-      sender.layer.borderWidth = 1
-    }
-  }
-  
   @objc private func buttonTapped(_ sender: UIButton) {
     let index = sender.tag
     
