@@ -226,12 +226,10 @@ extension MapViewController {
       guard let self = self else { return }
       
       if let error = error {
-        print("장소 검색 오류: \(error.localizedDescription)")
         return
       }
       
       guard let predictions = predictions, !predictions.isEmpty else {
-        print("검색 결과가 없습니다.")
         self.hideResultsTableView()
         return
       }
@@ -287,6 +285,15 @@ extension MapViewController: CLLocationManagerDelegate {
 extension MapViewController: UITextFieldDelegate {
   func textFieldShouldReturn(_ textField: UITextField) -> Bool {
     performSearch()
+    
+    // 검색 결과가 있으면 첫 번째 결과로 자동 이동
+    if !searchResults.isEmpty {
+      fetchPlaceDetails(placeID: searchResults[0].placeID)
+      textField.text = searchResults[0].attributedPrimaryText.string
+      hideResultsTableView()
+    }
+    
+    textField.resignFirstResponder()
     return true
   }
   
@@ -334,9 +341,55 @@ extension MapViewController: UITableViewDelegate, UITableViewDataSource {
     textField.text = selectedPlace.attributedPrimaryText.string
     
     // TODO: 상세 정보 가져오기
+    fetchPlaceDetails(placeID: selectedPlace.placeID)
     
     // 테이블 숨기기 및 키보드 내리기
     hideResultsTableView()
     textField.resignFirstResponder()
+  }
+}
+
+// MARK: - Private Methods
+extension MapViewController {
+  private func fetchPlaceDetails(placeID: String) {
+    placesClient.fetchPlace(
+      fromPlaceID: placeID,
+      placeFields: [.name, .coordinate, .formattedAddress],
+      sessionToken: GMSAutocompleteSessionToken.init()
+    ) { [weak self] (place, error) in
+      guard let self = self else { return }
+      
+      if let error = error {
+        return
+      }
+      
+      guard let place = place else {
+        return
+      }
+      
+      // 지도 이동
+      self.moveMapToLocation(coordinate: place.coordinate)
+      
+      // 마커 추가
+      self.addMarker(at: place.coordinate, title: place.name)
+    }
+  }
+  
+  private func moveMapToLocation(coordinate: CLLocationCoordinate2D) {
+    let camera = GMSCameraPosition.camera(withTarget: coordinate, zoom: 17)
+    mapView.animate(to: camera)
+  }
+  
+  private func addMarker(at coordinate: CLLocationCoordinate2D, title: String?) {
+    // 기존 마커 제거
+    mapView.clear()
+    
+    // 새 마커 추가
+    let marker = GMSMarker(position: coordinate)
+    marker.title = title
+    marker.map = mapView
+    
+    // 마커의 정보창 표시
+    mapView.selectedMarker = marker
   }
 }
