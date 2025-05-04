@@ -29,6 +29,16 @@ final class MapViewController: UIViewController {
   // 건국대학교 좌표
   private let initialLocation = CLLocationCoordinate2D(latitude: 37.540693, longitude: 127.079361)
   
+  private lazy var placeCardsContainer: PlaceCardsContainerView = {
+    let view = PlaceCardsContainerView()
+    view.delegate = self
+    view.isHidden = true
+    return view
+  }()
+  
+  private var currentPlaces: [PlaceCardInfo] = []
+  private var currentMarkers: [GMSMarker] = []
+  
   // MARK: - UI Properties
   private let searchContainerView: UIView = {
     let view = UIView()
@@ -130,6 +140,7 @@ final class MapViewController: UIViewController {
     searchContainerView.addSubview(textField)
     view.addSubview(filterButton)
     view.addSubview(resultsTableView)
+    view.addSubview(placeCardsContainer)
     
     mapView.snp.makeConstraints { make in
       make.edges.equalToSuperview()
@@ -166,6 +177,12 @@ final class MapViewController: UIViewController {
       make.leading.equalTo(searchContainerView)
       make.trailing.equalTo(filterButton)
       make.height.equalTo(0) // 처음에는 높이 0
+    }
+    
+    placeCardsContainer.snp.makeConstraints { make in
+      make.leading.trailing.equalToSuperview()
+      make.bottom.equalTo(view.safeAreaLayoutGuide).offset(-16)
+      make.height.equalTo(220)
     }
   }
   
@@ -388,7 +405,7 @@ extension MapViewController {
   private func fetchPlaceDetails(placeID: String) {
     placesClient.fetchPlace(
       fromPlaceID: placeID,
-      placeFields: [.name, .coordinate, .formattedAddress],
+      placeFields: [.name, .coordinate, .formattedAddress, .rating, .userRatingsTotal, .photos],
       sessionToken: GMSAutocompleteSessionToken.init()
     ) { [weak self] (place, error) in
       guard let self = self else { return }
@@ -405,8 +422,90 @@ extension MapViewController {
       self.moveMapToLocation(coordinate: place.coordinate)
       
       // 마커 추가
+      self.mapView.clear()
       self.addMarker(at: place.coordinate, title: place.name)
+      
+      // 단일 카드 표시
+      self.showPlaceCard(for: place)
+      
+      // 서버에서 추천 장소 가져오기
+      self.fetchRecommendedPlaces(coordinate: place.coordinate)
     }
+  }
+  
+  private func showPlaceCard(for place: GMSPlace) {
+    // 현재 위치 가져오기
+    let currentLocation = locationManager.location?.coordinate ?? initialLocation
+    
+    // PlaceCardInfo 생성
+    let placeInfo = PlaceCardInfo.from(place: place, currentLocation: currentLocation)
+    
+    // 단일 장소 표시
+    currentPlaces = [placeInfo]
+    placeCardsContainer.configure(with: currentPlaces)
+    placeCardsContainer.show(animated: true)
+  }
+  
+  // 2. 서버에서 추천 장소 가져오기
+  private func fetchRecommendedPlaces(coordinate: CLLocationCoordinate2D) {
+      getRecommendedPlacesUseCase.execute(
+          x: coordinate.longitude,
+          y: coordinate.latitude
+      )
+      .receive(on: DispatchQueue.main)
+      .sink { completion in
+          switch completion {
+          case .finished:
+              break
+          case .failure(let error):
+              print("추천 장소 요청 실패: \(error)")
+          }
+      } receiveValue: { [weak self] response in
+          self?.updateUIWithRecommendedPlaces(response.places)
+      }
+      .store(in: &cancellables)
+  }
+  
+  // 3. UI 업데이트
+  private func updateUIWithRecommendedPlaces(_ places: [PlaceResponse]) {
+      guard let firstPlace = currentPlaces.first else { return }
+      
+      // 현재 위치
+      let currentLocation = locationManager.location?.coordinate ?? initialLocation
+      
+      // 추천 장소들을 PlaceCardInfo로 변환
+      let recommendedPlaces = places.map { place -> PlaceCardInfo in
+          let coordinate = CLLocationCoordinate2D(
+              latitude: place.coordinate.latitude,
+              longitude: place.coordinate.longitude
+          )
+          
+          // 거리 계산
+          let placeLocation = CLLocation(latitude: coordinate.latitude, longitude: coordinate.longitude)
+          let userLocation = CLLocation(latitude: currentLocation.latitude, longitude: currentLocation.longitude)
+          let distance = userLocation.distance(from: placeLocation) / 1000
+          
+          return PlaceCardInfo(
+              name: place.address, // 또는 적절한 이름 필드
+              address: place.address,
+              distance: distance,
+              rating: nil, // 서버 응답에 없으면 nil
+              reviewCount: nil,
+              imageUrl: place.image,
+              placeId: place.id
+          )
+      }
+      
+      // 첫 번째 장소(사용자가 선택한 것) + 추천 장소들
+      var allPlaces = [firstPlace]
+      allPlaces.append(contentsOf: recommendedPlaces)
+      
+      // 카드뷰 업데이트
+      currentPlaces = allPlaces
+      placeCardsContainer.configure(with: allPlaces)
+      
+      // TODO: 추천 장소 마커 추가
+      // addRecommendedMarkers(places)
   }
   
   private func moveMapToLocation(coordinate: CLLocationCoordinate2D) {
@@ -434,5 +533,43 @@ extension MapViewController: FilterDelegate {
     print("Selected purposes: \(filterData.purposes)")
     
     // TODO: 필터에 따른 지도 업데이트
+  }
+}
+
+extension MapViewController: PlaceCardsContainerDelegate {
+    func didSelectPlace(at index: Int, placeInfo: PlaceCardInfo) {
+        // 장소 상세정보 팝업 표시
+        showPlaceDetailPopup(placeInfo)
+    }
+    
+    func didScrollToPlace(at index: Int, placeInfo: PlaceCardInfo) {
+        // 스크롤 시 해당 장소로 지도 이동
+        if index < currentMarkers.count {
+            let marker = currentMarkers[index]
+            mapView.selectedMarker = marker
+            
+            // 카메라 이동
+            let camera = GMSCameraPosition.camera(
+                withTarget: marker.position,
+                zoom: 16
+            )
+            mapView.animate(to: camera)
+        }
+    }
+    
+    private func showPlaceDetailPopup(_ placeInfo: PlaceCardInfo) {
+        // TODO: 장소 상세정보 팝업 구현
+        print("Show detail for: \(placeInfo.name)")
+    }
+}
+
+// MARK: - Google Maps Delegate
+extension MapViewController: GMSMapViewDelegate {
+  func mapView(_ mapView: GMSMapView, didTapAt coordinate: CLLocationCoordinate2D) {
+      if placeCardsContainer.isHidden {
+          placeCardsContainer.show(animated: true)
+      } else {
+          placeCardsContainer.hide(animated: true)
+      }
   }
 }
