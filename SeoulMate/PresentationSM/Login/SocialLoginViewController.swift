@@ -6,13 +6,17 @@
 //
 
 import UIKit
+import Combine
 import SnapKit
 import GoogleSignIn
-import SwiftUI
 
 final class SocialLoginViewController: UIViewController {
   
   // MARK: - Properties
+  private let loginUseCase: LoginUseCaseProtocol
+  private var cancellables = Set<AnyCancellable>()
+  
+  // MARK: - UI Properties
   private let titleLabel: UILabel = {
     let label = UILabel()
     label.text = "SeoulMate"
@@ -46,6 +50,16 @@ final class SocialLoginViewController: UIViewController {
     indicator.color = .gray
     return indicator
   }()
+  
+  // MARK: - Initializer
+  init(loginUseCase: LoginUseCaseProtocol) {
+    self.loginUseCase = loginUseCase
+    super.init(nibName: nil, bundle: nil)
+  }
+  
+  required init?(coder: NSCoder) {
+    fatalError("init(coder:) has not been implemented")
+  }
   
   // MARK: - LifeCycle
   override func viewDidLoad() {
@@ -92,21 +106,68 @@ extension SocialLoginViewController {
 
 extension SocialLoginViewController {
   @objc private func handleGoogleSignIn() {
-    // 로딩 인디케이터 표시
     activityIndicator.startAnimating()
     googleSignInButton.isEnabled = false
     
-    // UserSessionManager를 통한 Google 로그인 처리
-    UserSessionManager.shared.startGoogleSignIn(presentingViewController: self) { [weak self] success in
-      DispatchQueue.main.async {
-        self?.activityIndicator.stopAnimating()
-        self?.googleSignInButton.isEnabled = true
-        
-        if !success {
-          self?.showLoginErrorAlert()
-        }
+    // Google Sign-In
+    GIDSignIn.sharedInstance.signIn(withPresenting: self) { [weak self] signInResult, error in
+      guard let self = self else { return }
+      
+      if let error = error {
+        print("Google 로그인 에러: \(error.localizedDescription)")
+        self.handleLoginError()
+        return
       }
+      
+      guard let user = signInResult?.user,
+            let idToken = user.idToken?.tokenString else {
+        self.handleLoginError()
+        return
+      }
+      
+      // UseCase를 통한 백엔드 로그인
+      self.loginUseCase.execute(authorizationCode: idToken)
+        .receive(on: DispatchQueue.main)
+        .sink { completion in
+          switch completion {
+          case .finished:
+            break
+          case .failure(let error):
+            print("백엔드 로그인 실패: \(error.localizedDescription)")
+            // Google Sign-Out 처리
+            GIDSignIn.sharedInstance.signOut()
+            self.handleLoginError()
+          }
+        } receiveValue: { [weak self] response in
+          self?.handleLoginSuccess(response)
+        }
+        .store(in: &self.cancellables)
     }
+  }
+  
+  private func handleLoginSuccess(_ response: LoginResponse) {
+    activityIndicator.stopAnimating()
+    googleSignInButton.isEnabled = true
+    
+    // 토큰 저장
+    UserSessionManager.shared.saveTokens(
+      access: response.accessToken,
+      refresh: response.refreshToken
+    )
+    UserSessionManager.shared.saveUserId(response.userId)
+    
+    // 첫 로그인 여부에 따라 화면 이동
+    if response.isFirstLogin {
+      UserSessionManager.shared.navigateToOnboarding()
+    } else {
+      UserSessionManager.shared.navigateToMain()
+    }
+  }
+  
+  private func handleLoginError() {
+    activityIndicator.stopAnimating()
+    googleSignInButton.isEnabled = true
+    showLoginErrorAlert()
   }
   
   private func showLoginErrorAlert() {

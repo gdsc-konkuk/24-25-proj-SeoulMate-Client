@@ -120,16 +120,7 @@ extension SignInCompleteViewController {
 // MARK: - Actions
 extension SignInCompleteViewController {
   @objc private func nextButtonTapped() {
-    // 온보딩 완료 처리
-    UserSessionManager.shared.completeOnboarding()
-    
-    // 탭바 컨트롤러로 이동 (루트 컨트롤러로 설정)
-    let tabBarController = TabBarController()
-    
-    if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
-       let window = windowScene.windows.first {
-      window.rootViewController = tabBarController
-      window.makeKeyAndVisible()
-    }
+    // 온보딩 완료 처리 및 메인 화면으로 이동
+    UserSessionManager.shared.completeOnboardingAndNavigateToMain()
   }
 }

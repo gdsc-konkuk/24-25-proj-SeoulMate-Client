@@ -6,132 +6,156 @@
 //
 
 import Foundation
-import Combine
 import GoogleSignIn
-
-enum UserSessionState {
-  case newUser(user: GIDGoogleUser)    // 첫 로그인 사용자
-  case existingUser(user: GIDGoogleUser) // 기존 사용자
-  case signedOut
-  case unknown
-}
+import UIKit
+import Combine
 
 final class UserSessionManager {
-  // 싱글톤 패턴
   static let shared = UserSessionManager()
   
-  // 사용자 세션 상태를 방출하는 publisher
-  private let userSessionSubject = CurrentValueSubject<UserSessionState, Never>(.unknown)
-  var userSessionPublisher: AnyPublisher<UserSessionState, Never> {
-    return userSessionSubject.eraseToAnyPublisher()
+  private let keychain = KeychainManager.shared
+  private let keychainService = "com.seoulmate.auth"
+  private let accessTokenKey = "accessToken"
+  private let refreshTokenKey = "refreshToken"
+  private let userIdKey = "userId"
+  
+  private var cancellables = Set<AnyCancellable>()
+  
+  weak var appDIContainer: AppDIContainer?
+  
+  private init() {}
+  
+  // MARK: - Properties
+  var isLoggedIn: Bool {
+    return getAccessToken() != nil && getCurrentUserId() != nil
   }
   
-  // 현재 로그인된 사용자
-  var currentUser: GIDGoogleUser? {
-    switch userSessionSubject.value {
-    case .newUser(let user), .existingUser(let user):
-      return user
-    default:
+  var isOnboardingCompleted: Bool {
+    get {
+      return UserDefaults.standard.bool(forKey: "OnboardingCompleted")
+    }
+    set {
+      UserDefaults.standard.set(newValue, forKey: "OnboardingCompleted")
+    }
+  }
+  
+  /// 로그아웃
+  func logout() {
+    // Google 로그아웃
+    GIDSignIn.sharedInstance.signOut()
+    
+    // 토큰 삭제
+    clearAllTokens()
+    
+    // 사용자 ID 삭제
+    UserDefaults.standard.removeObject(forKey: userIdKey)
+    UserDefaults.standard.synchronize()
+    
+    // 기타 사용자 데이터 초기화
+    isOnboardingCompleted = false
+    
+    // 로그인 화면으로 이동
+    navigateToLogin()
+  }
+  
+  /// 온보딩 완료
+  func completeOnboarding() {
+    isOnboardingCompleted = true
+  }
+  
+  // MARK: - Token Management
+  func saveTokens(access: String, refresh: String) {
+    do {
+      let accessData = access.data(using: .utf8)!
+      let refreshData = refresh.data(using: .utf8)!
+      
+      try keychain.save(accessData, service: keychainService, account: accessTokenKey)
+      try keychain.save(refreshData, service: keychainService, account: refreshTokenKey)
+    } catch {
+      print("Failed to save tokens: \(error)")
+    }
+  }
+  
+  func getAccessToken() -> String? {
+    do {
+      let data = try keychain.read(service: keychainService, account: accessTokenKey)
+      return String(data: data, encoding: .utf8)
+    } catch {
       return nil
     }
   }
   
-  // 현재 로그인 상태
-  var isSignedIn: Bool {
-    switch userSessionSubject.value {
-    case .newUser, .existingUser:
-      return true
-    default:
-      return false
+  func getRefreshToken() -> String? {
+    do {
+      let data = try keychain.read(service: keychainService, account: refreshTokenKey)
+      return String(data: data, encoding: .utf8)
+    } catch {
+      return nil
     }
   }
   
-  // 첫 로그인 사용자인지 여부
-  var isNewUser: Bool {
-    if case .newUser = userSessionSubject.value {
-      return true
-    }
-    return false
-  }
-  
-  private init() {
-    // 초기 상태 설정 (앱 실행 시 이전 로그인 상태 복원)
-    restorePreviousSession()
-  }
-  
-  // 이전 세션 복원
-  func restorePreviousSession() {
-    if let user = GIDSignIn.sharedInstance.currentUser {
-      // 기존 사용자 검증 (UserDefaults 등에서 확인)
-      checkUserRegistrationStatus(for: user)
-    } else {
-      userSessionSubject.send(.signedOut)
+  func clearAllTokens() {
+    do {
+      try keychain.delete(service: keychainService, account: accessTokenKey)
+      try keychain.delete(service: keychainService, account: refreshTokenKey)
+    } catch {
+      print("Failed to clear tokens: \(error)")
     }
   }
   
-  // 로그인 처리
-  func signIn(user: GIDGoogleUser) {
-    // 사용자가 기존에 가입했는지 확인
-    checkUserRegistrationStatus(for: user)
+  // MARK: - User ID Management
+  func saveUserId(_ userId: Int64) {
+    UserDefaults.standard.set(userId, forKey: userIdKey)
+    UserDefaults.standard.synchronize()
   }
   
-  // 사용자 가입 상태 확인
-  private func checkUserRegistrationStatus(for user: GIDGoogleUser) {
-    // 서버 구현 전이므로 모든 사용자를 신규 사용자로 처리
-    userSessionSubject.send(.newUser(user: user))
+  func getCurrentUserId() -> Int64? {
+    guard UserDefaults.standard.object(forKey: userIdKey) != nil else { return nil }
+    return Int64(UserDefaults.standard.integer(forKey: userIdKey))
+  }
+  
+  // MARK: - Navigation Methods
+  func navigateToLogin() {
+    guard let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+          let window = windowScene.windows.first,
+          let appDIContainer = self.appDIContainer else { return }
     
-    /* 서버 구현 후 활성화할 코드
-     // 사용자 이메일 가져오기
-     let email = user.profile?.email ?? ""
-     
-     // API 연동 코드
-     // API.checkUserExists(email: email) { [weak self] exists in
-     //     if exists {
-     //         self?.userSessionSubject.send(.existingUser(user: user))
-     //     } else {
-     //         self?.userSessionSubject.send(.newUser(user: user))
-     //     }
-     // }
-     */
+    let loginSceneDIContainer = appDIContainer.makeLoginSceneDIContainer()
+    let loginViewController = loginSceneDIContainer.makeSocialLoginViewController()
+    let navigationController = UINavigationController(rootViewController: loginViewController)
+    
+    window.rootViewController = navigationController
+    window.makeKeyAndVisible()
   }
   
-  // 로그아웃 처리
-  func signOut() {
-    GIDSignIn.sharedInstance.signOut()
-    userSessionSubject.send(.signedOut)
+  func navigateToOnboarding() {
+    guard let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+          let window = windowScene.windows.first,
+          let appDIContainer = self.appDIContainer else { return }
+    
+    let loginSceneDIContainer = appDIContainer.makeLoginSceneDIContainer()
+    let travelWithVC = loginSceneDIContainer.makeTravelWithViewController()
+    let navigationController = UINavigationController(rootViewController: travelWithVC)
+    
+    window.rootViewController = navigationController
+    window.makeKeyAndVisible()
   }
   
-  // 온보딩 완료 처리 - 신규 사용자를 기존 사용자로 변경
-  func completeOnboarding() {
-    if case .newUser(let user) = userSessionSubject.value {
-      userSessionSubject.send(.existingUser(user: user))
-      
-      // 나중에 서버 구현 시 활성화
-      // API.registerUserPreferences(...) { success in
-      //     if success {
-      //         self.userSessionSubject.send(.existingUser(user: user))
-      //     }
-      // }
-    }
+  func navigateToMain() {
+    guard let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+          let window = windowScene.windows.first,
+          let appDIContainer = self.appDIContainer else { return }
+    
+    let tabBarController = appDIContainer.makeTabBarController()
+    window.rootViewController = tabBarController
+    window.makeKeyAndVisible()
   }
   
-  // Google 로그인 시작
-  func startGoogleSignIn(presentingViewController: UIViewController, completion: @escaping (Bool) -> Void) {
-    GIDSignIn.sharedInstance.signIn(withPresenting: presentingViewController) { [weak self] signInResult, error in
-      if let error = error {
-        print("Google 로그인 에러: \(error.localizedDescription)")
-        completion(false)
-        return
-      }
-      
-      guard let self = self, let user = signInResult?.user else {
-        completion(false)
-        return
-      }
-      
-      // 로그인 상태 업데이트
-      self.signIn(user: user)
-      completion(true)
-    }
+  func completeOnboardingAndNavigateToMain() {
+    // 온보딩 완료 처리
+    isOnboardingCompleted = true
+    
+    // 메인 화면으로 이동
+    navigateToMain()
   }
 }

@@ -6,14 +6,21 @@
 //
 
 import UIKit
+import Combine
 import CoreLocation
 import GoogleMaps
 import GoogleSignIn
 import GooglePlaces
 
-class MapViewController: UIViewController {
+final class MapViewController: UIViewController {
   
   // MARK: - Properties
+  private let appDIContainer: AppDIContainer
+  private let getRecommendedPlacesUseCase: GetRecommendedPlacesUseCaseProtocol
+  private let generatePlacePromptUseCase: GeneratePlacePromptUseCaseProtocol
+  private var cancellables = Set<AnyCancellable>()
+  
+  private let slideTransitioningDelegate = SlideTransitioningDelegate()
   private let mapView = GMSMapView()
   private let locationManager = CLLocationManager()
   private var placesClient: GMSPlacesClient!
@@ -70,7 +77,7 @@ class MapViewController: UIViewController {
   
   private let filterButton: UIButton = {
     let button = UIButton()
-    button.backgroundColor = .black
+    button.backgroundColor = .main500
     button.layer.cornerRadius = 24
     
     let config = UIImage.SymbolConfiguration(pointSize: 18, weight: .medium)
@@ -80,6 +87,22 @@ class MapViewController: UIViewController {
     
     return button
   }()
+  
+  // MARK: - Initializer
+  init(
+    appDIContainer: AppDIContainer,
+    getRecommendedPlacesUseCase: GetRecommendedPlacesUseCaseProtocol,
+    generatePlacePromptUseCase: GeneratePlacePromptUseCaseProtocol
+  ) {
+    self.appDIContainer = appDIContainer
+    self.getRecommendedPlacesUseCase = getRecommendedPlacesUseCase
+    self.generatePlacePromptUseCase = generatePlacePromptUseCase
+    super.init(nibName: nil, bundle: nil)
+  }
+  
+  required init?(coder: NSCoder) {
+    fatalError("init(coder:) has not been implemented")
+  }
   
   // MARK: - Lifecycle
   override func viewDidLoad() {
@@ -91,6 +114,11 @@ class MapViewController: UIViewController {
     setupMapView()
     setupPlacesAPI()
     setupMapTapGesture()
+  }
+  
+  override func viewWillAppear(_ animated: Bool) {
+    super.viewWillAppear(animated)
+    navigationController?.isNavigationBarHidden = true
   }
   
   // MARK: - Setup
@@ -225,7 +253,7 @@ extension MapViewController {
     ) { [weak self] (predictions, error) in
       guard let self = self else { return }
       
-      if let error = error {
+      if error != nil {
         return
       }
       
@@ -241,8 +269,14 @@ extension MapViewController {
   }
   
   @objc private func filterButtonTapped() {
-    // 필터 기능 실행
-    // TODO: 필터 기능 구현
+    let mapSceneDIContainer = appDIContainer.makeMapSceneDIContainer()
+    let filterVC = mapSceneDIContainer.makeFilterViewController()
+    filterVC.delegate = self
+    
+    filterVC.modalPresentationStyle = .fullScreen
+    filterVC.transitioningDelegate = slideTransitioningDelegate
+    
+    present(filterVC, animated: true)
   }
   
   @objc private func mapTapped() {
@@ -359,7 +393,7 @@ extension MapViewController {
     ) { [weak self] (place, error) in
       guard let self = self else { return }
       
-      if let error = error {
+      if error != nil {
         return
       }
       
@@ -391,5 +425,14 @@ extension MapViewController {
     
     // 마커의 정보창 표시
     mapView.selectedMarker = marker
+  }
+}
+
+extension MapViewController: FilterDelegate {
+  func didApplyFilter(_ filterData: FilterData) {
+    print("Selected companion: \(filterData.companion ?? "None")")
+    print("Selected purposes: \(filterData.purposes)")
+    
+    // TODO: 필터에 따른 지도 업데이트
   }
 }

@@ -14,11 +14,9 @@ final class TravelPurposeViewController: UIViewController {
   
   // MARK: - Properties
   private let travelCompanion: String
+  private let updateUserProfileUseCase: UpdateUserProfileUseCaseProtocol
   
-  private let purposes = [
-    "Activities", "Nature", "Shopping", "SNS hot places", "Culture-Art-History", "Eating", "Tourist spot"
-  ]
-  
+  private let purposes = TravelPreferences.purposes
   @Published private var selectedPurposes: [String] = []
   private var subscriptions = Set<AnyCancellable>()
   
@@ -99,8 +97,12 @@ final class TravelPurposeViewController: UIViewController {
   }()
   
   // MARK: - Initializer
-  init(travelCompanion: String) {
+  init(
+    travelCompanion: String,
+    updateUserProfileUseCase: UpdateUserProfileUseCaseProtocol
+  ) {
     self.travelCompanion = travelCompanion
+    self.updateUserProfileUseCase = updateUserProfileUseCase
     super.init(nibName: nil, bundle: nil)
   }
   
@@ -122,7 +124,6 @@ final class TravelPurposeViewController: UIViewController {
 extension TravelPurposeViewController {
   private func setupUI() {
     view.backgroundColor = .white
-    navigationController?.isNavigationBarHidden = true
     
     let spacer = UIView()
     spacer.setContentHuggingPriority(.defaultLow, for: .horizontal)
@@ -265,8 +266,50 @@ extension TravelPurposeViewController {
   }
   
   @objc private func nextButtonTapped() {
-    // TODO: pushViewController with data
+    guard !selectedPurposes.isEmpty else { return }
+    
+    // 서버에 프로필 업데이트
+    submitProfile()
+  }
+  
+  private func submitProfile() {
+    let userName = "New User"
+    let birthYear = "2000"
+    
+    updateUserProfileUseCase.execute(
+      userName: userName,
+      birthYear: birthYear,
+      companion: travelCompanion,  // 이전 화면에서 받은 데이터
+      purposes: selectedPurposes   // 현재 화면에서 선택한 데이터
+    )
+    .receive(on: DispatchQueue.main)
+    .sink { [weak self] completion in
+      switch completion {
+      case .finished:
+        break
+      case .failure(let error):
+        print("프로필 업데이트 실패: \(error.localizedDescription)")
+        self?.showErrorAlert()
+      }
+    } receiveValue: { [weak self] _ in
+      // 성공 시 완료 화면으로 이동
+      self?.navigateToCompleteScreen()
+    }
+    .store(in: &subscriptions)
+  }
+  
+  private func navigateToCompleteScreen() {
     let signInVC = SignInCompleteViewController()
     navigationController?.pushViewController(signInVC, animated: true)
+  }
+  
+  private func showErrorAlert() {
+    let alert = UIAlertController(
+      title: "오류",
+      message: "프로필 정보 저장에 실패했습니다.",
+      preferredStyle: .alert
+    )
+    alert.addAction(UIAlertAction(title: "확인", style: .default))
+    present(alert, animated: true)
   }
 }

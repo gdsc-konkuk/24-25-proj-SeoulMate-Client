@@ -14,16 +14,19 @@ enum TabItems: Int, CaseIterable {
   case aiChat
   case myPage
   
-  var viewController: UIViewController {
+  func viewController(appDIContainer: AppDIContainer) -> UIViewController {
     switch self {
     case .map:
-      let vc = MapViewController()
-      return vc
+      let mapSceneDIContainer = appDIContainer.makeMapSceneDIContainer()
+      let vc = mapSceneDIContainer.makeMapViewController()
+      return UINavigationController(rootViewController: vc)
     case .aiChat:
-      let vc = AIChatViewController()
+      let aiChatSceneDIContainer = appDIContainer.makeAIChatSceneDIContainer()
+      let vc = aiChatSceneDIContainer.makeAIChatViewController()
       return vc
     case .myPage:
-      let vc = MyPageViewController()
+      let myPageSceneDIContainer = appDIContainer.makeMyPageSceneDIContainer()
+      let vc = myPageSceneDIContainer.makeMyPageViewController()
       return vc
     }
   }
@@ -51,9 +54,20 @@ enum TabItems: Int, CaseIterable {
   }
 }
 
-class TabBarController: UIViewController {
+final class TabBarController: UIViewController {
   
   // MARK: - Properties
+  let appDIContainer: AppDIContainer
+  
+  init(appDIContainer: AppDIContainer) {
+    self.appDIContainer = appDIContainer
+    super.init(nibName: nil, bundle: nil)
+  }
+  
+  required init?(coder: NSCoder) {
+    fatalError("init(coder:) has not been implemented")
+  }
+  
   private var selectedTab: TabItems = .map
   private var currentViewController: UIViewController?
   private var viewControllers: [TabItems: UIViewController] = [:]
@@ -187,7 +201,7 @@ extension TabBarController {
       viewController = cachedViewController
     } else {
       // 새로운 뷰 컨트롤러 생성 및 저장
-      viewController = tab.viewController
+      viewController = tab.viewController(appDIContainer: appDIContainer)
       viewControllers[tab] = viewController
     }
     

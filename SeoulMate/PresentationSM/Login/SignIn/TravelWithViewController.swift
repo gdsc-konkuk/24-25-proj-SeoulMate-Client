@@ -13,9 +13,7 @@ import SwiftUI
 final class TravelWithViewController: UIViewController {
   
   // MARK: - Properties
-  private let companions = [
-    "Alone", "Friends", "Parents", "Lover", "Spouse", "Children", "etc."
-  ]
+  private let companions = TravelPreferences.companions
   
   @Published private var selectedCompanion: String?
   private var subscriptions = Set<AnyCancellable>()
@@ -156,7 +154,7 @@ extension TravelWithViewController {
     companionStackView.snp.makeConstraints { make in
       make.top.equalToSuperview().offset(UIApplication.screenHeight * 0.3)
       make.leading.equalToSuperview().offset(20)
-//      make.height.equalTo(100)
+      //      make.height.equalTo(100)
     }
     
     nextButton.snp.makeConstraints { make in
@@ -205,11 +203,13 @@ extension TravelWithViewController {
   }
   
   @objc private func nextButtonTapped() {
-    // TODO: pushViewController with data
     guard let selectedCompanion = selectedCompanion else { return }
     
-    // TravelPurposeViewController로 이동
-    let travelPurposeVC = TravelPurposeViewController(travelCompanion: selectedCompanion)
+    guard let appDIContainer = UserSessionManager.shared.appDIContainer else { return }
+    let loginSceneDIContainer = appDIContainer.makeLoginSceneDIContainer()
+    let travelPurposeVC = loginSceneDIContainer.makeTravelPurposeViewController(
+      travelCompanion: selectedCompanion
+    )
     navigationController?.pushViewController(travelPurposeVC, animated: true)
   }
 }
