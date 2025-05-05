@@ -7,16 +7,19 @@
 
 import UIKit
 import SnapKit
+import Kingfisher
+import GooglePlaces
 
 @IBDesignable
 final class PlaceCardView: UIView {
   
   @IBOutlet weak var placeImageView: UIImageView!
-  
   @IBOutlet weak var placeName: UILabel!
   @IBOutlet weak var placeAddress: UILabel!
   @IBOutlet weak var placeDistance: UILabel!
   @IBOutlet weak var placeReview: UILabel!
+  
+  private var placesClient = GMSPlacesClient.shared()
   
   // MARK: - Initializers
   override init(frame: CGRect) {
@@ -45,22 +48,51 @@ final class PlaceCardView: UIView {
   }
   
   // MARK: - Configuration
+  // MARK: - Configuration
   func configure(with placeInfo: PlaceCardInfo) {
     placeName?.text = placeInfo.name
     placeAddress?.text = placeInfo.address
     placeDistance?.text = placeInfo.distanceText
     placeReview?.text = placeInfo.ratingText
     
-    // 이미지 설정
-    if let imageUrl = placeInfo.imageUrl,
-       let url = URL(string: imageUrl) {
-      // TODO: 실제 이미지 로딩 구현
-      placeImageView?.backgroundColor = .gray200
+    // 사진 로드
+    if let placeId = placeInfo.placeID {
+      loadFirstPhoto(from: placeId)
     } else {
-      placeImageView?.image = UIImage(systemName: "photo")
-      placeImageView?.tintColor = .gray400
-      placeImageView?.backgroundColor = .gray200
+      setPlaceholderImage()
     }
+  }
+  
+  private func loadFirstPhoto(from placeID: String) {
+    // 기본 이미지 설정
+    setPlaceholderImage()
+    
+    // 장소의 사진 메타데이터 조회
+    placesClient.lookUpPhotos(forPlaceID: placeID) { (photos, error) in
+      
+      // 첫 번째 사진 메타데이터 가져오기
+      guard let photoMetadata = photos?.results.first else {
+        print("No photos available for this place")
+        return
+      }
+      
+      // 사진 요청
+      self.placesClient.loadPlacePhoto(photoMetadata) { (photo, error) in
+        if let error = error {
+          print("Error loading photo: \(error.localizedDescription)")
+          self.setPlaceholderImage()
+          return
+        }
+        self.placeImageView?.image = photo
+        self.placeImageView?.backgroundColor = .clear
+      }
+    }
+  }
+  
+  private func setPlaceholderImage() {
+    placeImageView?.image = UIImage(systemName: "photo")
+    placeImageView?.tintColor = .gray400
+    placeImageView?.backgroundColor = .gray200
   }
   
   private func setupUI() {
