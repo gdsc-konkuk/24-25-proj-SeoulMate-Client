@@ -142,7 +142,8 @@ final class MapSceneDIContainer {
     return MapViewController(
       appDIContainer: appDIContainer,  // AppDIContainer 전달
       getRecommendedPlacesUseCase: appDIContainer.getRecommendedPlacesUseCase,
-      generatePlacePromptUseCase: appDIContainer.generatePlacePromptUseCase
+      generatePlacePromptUseCase: appDIContainer.generatePlacePromptUseCase,
+      getUserProfileUseCase: appDIContainer.getUserProfileUseCase
     )
   }
   

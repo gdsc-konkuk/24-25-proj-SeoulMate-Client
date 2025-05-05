@@ -6,12 +6,26 @@
 //
 
 import UIKit
+import SnapKit
 
-class AIChatViewController: UIViewController {
-
+final class AIChatViewController: UIViewController {
+  // MARK: - Properties
+  private var placeInfo: PlaceCardInfo?
+  
+  // MARK: - Lifecycle
   override func viewDidLoad() {
     super.viewDidLoad()
-    view.backgroundColor = UIColor.blue
+    setupUI()
   }
   
+  // MARK: - Configuration
+  func configure(with placeInfo: PlaceCardInfo) {
+    self.placeInfo = placeInfo
+    title = placeInfo.name
+  }
+  
+  // MARK: - Setup
+  private func setupUI() {
+    view.backgroundColor = .cyan
+  }
 }

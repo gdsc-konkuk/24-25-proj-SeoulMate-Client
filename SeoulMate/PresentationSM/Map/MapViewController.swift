@@ -18,6 +18,7 @@ final class MapViewController: UIViewController {
   private let appDIContainer: AppDIContainer
   private let getRecommendedPlacesUseCase: GetRecommendedPlacesUseCaseProtocol
   private let generatePlacePromptUseCase: GeneratePlacePromptUseCaseProtocol
+  private let getUserProfileUseCase: GetUserProfileUseCaseProtocol
   private var cancellables = Set<AnyCancellable>()
   
   private let slideTransitioningDelegate = SlideTransitioningDelegate()
@@ -102,11 +103,13 @@ final class MapViewController: UIViewController {
   init(
     appDIContainer: AppDIContainer,
     getRecommendedPlacesUseCase: GetRecommendedPlacesUseCaseProtocol,
-    generatePlacePromptUseCase: GeneratePlacePromptUseCaseProtocol
+    generatePlacePromptUseCase: GeneratePlacePromptUseCaseProtocol,
+    getUserProfileUseCase: GetUserProfileUseCaseProtocol
   ) {
     self.appDIContainer = appDIContainer
     self.getRecommendedPlacesUseCase = getRecommendedPlacesUseCase
     self.generatePlacePromptUseCase = generatePlacePromptUseCase
+    self.getUserProfileUseCase = getUserProfileUseCase
     super.init(nibName: nil, bundle: nil)
   }
   
@@ -204,6 +207,7 @@ final class MapViewController: UIViewController {
     mapView.camera = camera
     mapView.settings.myLocationButton = true
     mapView.settings.compassButton = true
+    mapView.delegate = self
   }
   
   private func setupActions() {
@@ -217,8 +221,17 @@ final class MapViewController: UIViewController {
   }
   
   private func setupMapTapGesture() {
-    let tapGesture = UITapGestureRecognizer(target: self, action: #selector(mapTapped))
-    mapView.addGestureRecognizer(tapGesture)
+    let tapGesture = UITapGestureRecognizer(target: self, action: #selector(handleBackgroundTap(_:)))
+    tapGesture.cancelsTouchesInView = false // 다른 터치 이벤트도 전달
+    view.addGestureRecognizer(tapGesture)
+  }
+  
+  @objc private func handleBackgroundTap(_ gesture: UITapGestureRecognizer) {
+    let location = gesture.location(in: view)
+    // 카드뷰가 보이고, 카드뷰 영역 밖을 탭한 경우에만 숨김
+    if !placeCardsContainer.isHidden && !placeCardsContainer.frame.contains(location) {
+      placeCardsContainer.hide(animated: true)
+    }
   }
   
   private func showResultsTableView() {
@@ -261,7 +274,7 @@ extension MapViewController {
     
     // Places API를 사용하여 자동 완성 요청
     let filter = GMSAutocompleteFilter()
-//    filter.countries = ["KR"]    // 한국으로 제한
+    filter.countries = ["KR"]    // 한국으로 제한
     
     placesClient.findAutocompletePredictions(
       fromQuery: searchText,
@@ -294,13 +307,6 @@ extension MapViewController {
     filterVC.transitioningDelegate = slideTransitioningDelegate
     
     present(filterVC, animated: true)
-  }
-  
-  @objc private func mapTapped() {
-    if !resultsTableView.isHidden {
-      hideResultsTableView()
-      textField.resignFirstResponder()
-    }
   }
 }
 
@@ -440,10 +446,24 @@ extension MapViewController {
     // PlaceCardInfo 생성
     let placeInfo = PlaceCardInfo.from(place: place, currentLocation: currentLocation)
     
+    let dummyPlaces: [PlaceCardInfo] = (1...4).map { idx in
+      PlaceCardInfo(
+        placeID: nil,
+        name: "Dummy Place \(idx)",
+        address: "Seoul, Dummy Address \(idx)",
+        distance: Double(500 * idx), // 500m, 1000m, ...
+        rating: Float(3 + idx % 2),  // 3.0, 4.0, 3.0, 4.0
+        ratingCount: 10 * idx,
+        description: "이건 더미데이터입니다구리"
+      )
+    }
+    
     // 단일 장소 표시
-    currentPlaces = [placeInfo]
+    currentPlaces = [placeInfo] + dummyPlaces
     placeCardsContainer.configure(with: currentPlaces)
     placeCardsContainer.show(animated: true)
+    // ★ 항상 첫 번째 카드로 이동
+    placeCardsContainer.scrollToIndex(0, animated: false)
   }
   
   // 2. 서버에서 추천 장소 가져오기
@@ -490,7 +510,8 @@ extension MapViewController {
         address: place.address,
         distance: distance,
         rating: nil,
-        ratingCount: nil
+        ratingCount: nil,
+        description: place.description
       )
     }
     
@@ -555,19 +576,60 @@ extension MapViewController: PlaceCardsContainerDelegate {
     }
   }
   
-  private func showPlaceDetailPopup(_ placeInfo: PlaceCardInfo) {
-    // TODO: 장소 상세정보 팝업 구현
-    print("Show detail for: \(placeInfo.name)")
+  func showPlaceDetailPopup(_ placeInfo: PlaceCardInfo) {
+    getUserProfileUseCase.execute()
+      .receive(on: DispatchQueue.main)
+      .sink { completion in
+        // 에러 처리 등
+      } receiveValue: { [weak self] profile in
+        let purposes = profile.purposes
+        let vc = PlaceDetailViewController()
+        vc.modalPresentationStyle = .overFullScreen
+        vc.delegate = self
+        vc.configure(with: placeInfo, purposes: purposes)
+        self?.present(vc, animated: false)
+      }
+      .store(in: &cancellables)
+  }
+}
+
+extension MapViewController: PlaceDetailViewControllerDelegate {
+  func placeDetailViewController(_ controller: PlaceDetailViewController, didDismissWith placeInfo: PlaceCardInfo?) {
+    guard let placeInfo = placeInfo else { return }
+    
+    // PlaceDetailViewController dismiss
+    controller.dismiss(animated: false) { [weak self] in
+      // AIChatViewController 생성 및 설정
+      let aiChatVC = AIChatViewController()
+      aiChatVC.configure(with: placeInfo)
+      aiChatVC.modalPresentationStyle = .fullScreen
+      aiChatVC.modalTransitionStyle = .coverVertical
+      self?.present(aiChatVC, animated: true)
+    }
   }
 }
 
 // MARK: - Google Maps Delegate
 extension MapViewController: GMSMapViewDelegate {
   func mapView(_ mapView: GMSMapView, didTapAt coordinate: CLLocationCoordinate2D) {
-    if placeCardsContainer.isHidden {
-      placeCardsContainer.show(animated: true)
-    } else {
+    if !placeCardsContainer.isHidden {
       placeCardsContainer.hide(animated: true)
+    }
+  }
+  
+  // ★ POI(장소) 클릭 시 카드뷰 띄우기
+  func mapView(_ mapView: GMSMapView, didTapPOIWithPlaceID placeID: String, name: String, location: CLLocationCoordinate2D) {
+    // POI의 상세 정보를 가져와서 카드뷰를 띄움
+    placesClient.fetchPlace(
+      fromPlaceID: placeID,
+      placeFields: [.name, .placeID, .coordinate, .formattedAddress, .rating, .userRatingsTotal, .photos],
+      sessionToken: nil
+    ) { [weak self] (place, error) in
+      guard let self = self, let place = place, error == nil else { return }
+      self.moveMapToLocation(coordinate: place.coordinate)
+      self.mapView.clear()
+      self.addMarker(at: place.coordinate, title: place.name)
+      self.showPlaceCard(for: place)
     }
   }
 }

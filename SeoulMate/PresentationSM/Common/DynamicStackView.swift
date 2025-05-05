@@ -18,7 +18,7 @@ final class DynamicStackView: UIStackView {
   var horizontalSpacing: CGFloat = 10
   var maxWidth: CGFloat = UIApplication.screenWidth - 40
   
-  private var buttons: [CommonRectangleButton] = []
+  var buttons: [CommonRectangleButton] = []
   private var items: [String] = []
   private var horizontalStacks: [UIStackView] = []
   
@@ -38,6 +38,14 @@ final class DynamicStackView: UIStackView {
   var selectedTextColor: UIColor = .main500
   
   private var subscriptions = Set<AnyCancellable>()
+  
+  var buttonFont: UIFont = .systemFont(ofSize: 13) {
+    didSet {
+      updateButtonHeights()
+    }
+  }
+  
+  var buttonVerticalPadding: CGFloat = 4
   
   // MARK: - LifeCycle
   override init(frame: CGRect) {
@@ -150,16 +158,13 @@ extension DynamicStackView {
   private func createButton(withTitle title: String, at index: Int) -> CommonRectangleButton {
     let button = CommonRectangleButton(
       title: title,
-      fontStyle: .mediumFont(ofSize: 18),
+      fontStyle: buttonFont,
       titleColor: normalTextColor,
       backgroundColor: normalBackgroundColor
     )
     button.tag = index
+    button.contentEdgeInsets = UIEdgeInsets(top: buttonVerticalPadding, left: 12, bottom: buttonVerticalPadding, right: 12)
     button.addTarget(self, action: #selector(buttonTapped(_:)), for: .touchUpInside)
-    
-    button.contentEdgeInsets = UIEdgeInsets(top: 10, left: 18, bottom: 10, right: 18)
-    button.layer.borderWidth = 1
-        button.layer.borderColor = UIColor.gray500.cgColor
     
     return button
   }
@@ -171,6 +176,12 @@ extension DynamicStackView {
     stackView.alignment = .center
     stackView.distribution = .fill
     return stackView
+  }
+  
+  private func updateButtonHeights() {
+    for button in buttons {
+      button.titleLabel?.font = buttonFont
+    }
   }
 }
 

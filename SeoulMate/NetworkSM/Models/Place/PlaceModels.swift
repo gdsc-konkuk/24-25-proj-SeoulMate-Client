@@ -13,6 +13,7 @@ struct PlaceResponse: Decodable {
   let address: String
   let image: String?
   let coordinate: CoordinateResponse
+  let description: String?
 }
 
 struct CoordinateResponse: Decodable {

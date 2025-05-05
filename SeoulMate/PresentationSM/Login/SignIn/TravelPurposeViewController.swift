@@ -81,6 +81,7 @@ final class TravelPurposeViewController: UIViewController {
     let stackView = DynamicStackView()
     // MARK: 다중 선택 모드
     stackView.isSingleSelectionMode = false
+    stackView.buttonFont = .mediumFont(ofSize: 16)
     return stackView
   }()
   

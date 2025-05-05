@@ -22,7 +22,7 @@ final class UserService: UserServiceProtocol {
   }
   
   func getProfile() -> AnyPublisher<UserProfileResponse, NetworkError> {
-    // 더미 프로필 응답 반환
+    // TODO: 더미 프로필 응답 반환
     let dummyProfile = UserProfileResponse(
         userName: "Test User",
         birthYear: "1995",

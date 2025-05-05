@@ -131,6 +131,36 @@ extension PlaceCardsContainerView: UICollectionViewDelegate {
       delegate?.didScrollToPlace(at: currentIndex, placeInfo: places[currentIndex])
     }
   }
+  
+  func scrollViewWillEndDragging(_ scrollView: UIScrollView, withVelocity velocity: CGPoint, targetContentOffset: UnsafeMutablePointer<CGPoint>) {
+    guard let layout = collectionView.collectionViewLayout as? UICollectionViewFlowLayout else { return }
+    let cellWidth = collectionView.bounds.width - 60
+    let cellSpacing = layout.minimumLineSpacing
+    let cellWidthIncludingSpacing = cellWidth + cellSpacing
+    let inset = layout.sectionInset.left
+
+    let proposedOffsetX = targetContentOffset.pointee.x
+    let currentOffsetX = scrollView.contentOffset.x
+
+    // 현재 인덱스
+    let currentIndex = round((currentOffsetX + inset) / cellWidthIncludingSpacing)
+    // 이동 방향 및 거리
+    let offsetDiff = proposedOffsetX - currentOffsetX
+
+    var targetIndex = currentIndex
+
+    // velocity가 크거나, 드래그 거리가 셀의 1/3 이상이면 다음/이전 카드로 이동
+    if abs(velocity.x) > 0.2 {
+        targetIndex += velocity.x > 0 ? 1 : -1
+    } else if abs(offsetDiff) > cellWidthIncludingSpacing / 3 {
+        targetIndex += offsetDiff > 0 ? 1 : -1
+    }
+    // 인덱스 범위 제한
+    targetIndex = max(0, min(CGFloat(places.count - 1), targetIndex))
+
+    let newOffsetX = targetIndex * cellWidthIncludingSpacing - inset
+    targetContentOffset.pointee = CGPoint(x: newOffsetX, y: targetContentOffset.pointee.y)
+  }
 }
 
 // MARK: - UICollectionViewDelegateFlowLayout

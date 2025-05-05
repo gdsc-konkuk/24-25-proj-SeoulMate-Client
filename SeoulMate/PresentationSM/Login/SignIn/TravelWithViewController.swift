@@ -69,6 +69,7 @@ final class TravelWithViewController: UIViewController {
   private lazy var companionStackView: DynamicStackView = {
     let stackView = DynamicStackView()
     stackView.isSingleSelectionMode = true
+    stackView.buttonFont = .mediumFont(ofSize: 16)
     return stackView
   }()
   

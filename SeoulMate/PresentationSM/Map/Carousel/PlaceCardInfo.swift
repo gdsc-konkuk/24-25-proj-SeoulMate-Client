@@ -16,6 +16,7 @@ struct PlaceCardInfo {
   let distance: Double
   let rating: Float?
   let ratingCount: Int?
+  let description: String?
   
   var distanceText: String {
     if distance < 1000 {
@@ -50,7 +51,8 @@ struct PlaceCardInfo {
       address: place.formattedAddress ?? "No address",
       distance: distance,
       rating: place.rating,
-      ratingCount: Int(place.userRatingsTotal)
+      ratingCount: Int(place.userRatingsTotal),
+      description: place.description
     )
   }
 }

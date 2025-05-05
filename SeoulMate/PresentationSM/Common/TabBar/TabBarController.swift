@@ -177,7 +177,7 @@ final class TabBarController: UIViewController {
 
 extension TabBarController {
   // MARK: - Tab Switching
-  private func switchToTab(_ tab: TabItems) {
+  func switchToTab(_ tab: TabItems) {
     // 이미 선택된 탭이면 아무것도 하지 않음 (두 번 탭했을 때 재생성 방지)
     if selectedTab == tab && currentViewController != nil {
       return
