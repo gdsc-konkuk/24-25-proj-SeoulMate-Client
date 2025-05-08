@@ -119,29 +119,44 @@ extension SocialLoginViewController {
         return
       }
       
-      guard let user = signInResult?.user,
-            let idToken = user.idToken?.tokenString else {
+      guard let signInResult = signInResult else {
         self.handleLoginError()
         return
       }
       
-      // UseCase를 통한 백엔드 로그인
-      self.loginUseCase.execute(authorizationCode: idToken)
-        .receive(on: DispatchQueue.main)
-        .sink { completion in
-          switch completion {
-          case .finished:
-            break
-          case .failure(let error):
-            print("백엔드 로그인 실패: \(error.localizedDescription)")
-            // Google Sign-Out 처리
-            GIDSignIn.sharedInstance.signOut()
-            self.handleLoginError()
-          }
-        } receiveValue: { [weak self] response in
-          self?.handleLoginSuccess(response)
+      // ID 토큰 갱신
+      signInResult.user.refreshTokensIfNeeded { user, error in
+        guard error == nil else {
+          self.handleLoginError()
+          return
         }
-        .store(in: &self.cancellables)
+        
+        guard let user = user,
+              let idToken = user.idToken?.tokenString else {
+          self.handleLoginError()
+          return
+        }
+        
+        print("ID Token: \(idToken)")  // 디버깅을 위해 ID 토큰 출력
+        
+        // UseCase를 통한 백엔드 로그인
+        self.loginUseCase.execute(authorizationCode: idToken)
+          .receive(on: DispatchQueue.main)
+          .sink { completion in
+            switch completion {
+            case .finished:
+              break
+            case .failure(let error):
+              print("백엔드 로그인 실패: \(error.localizedDescription)")
+              // Google Sign-Out 처리
+              GIDSignIn.sharedInstance.signOut()
+              self.handleLoginError()
+            }
+          } receiveValue: { [weak self] response in
+            self?.handleLoginSuccess(response)
+          }
+          .store(in: &self.cancellables)
+      }
     }
   }
   

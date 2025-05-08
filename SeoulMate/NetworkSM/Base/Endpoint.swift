@@ -19,8 +19,7 @@ protocol Endpoint: URLRequestConvertible {
 
 extension Endpoint {
   var baseURL: String {
-    // TODO: 실제 API 서버 주소로 변경
-    return "https://api.seoulmate.com/api/v1"
+    return "https://whitepiano-codeserver.pe.kr"
   }
   
   var headers: [String: String]? {

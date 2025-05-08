@@ -16,6 +16,7 @@ final class PlaceDetailViewController: UIViewController {
   weak var delegate: PlaceDetailViewControllerDelegate?
   let detailView = PlaceDetailView()
   private var placeInfo: PlaceCardInfo?
+  private var isDismissedByAskToBot = false
   
   override func viewDidLoad() {
     super.viewDidLoad()
@@ -26,7 +27,10 @@ final class PlaceDetailViewController: UIViewController {
   
   override func viewDidDisappear(_ animated: Bool) {
     super.viewDidDisappear(animated)
-    delegate?.placeDetailViewController(self, didDismissWith: placeInfo)
+    // Ask to Bot 버튼으로 인한 dismiss가 아닌 경우에만 delegate 호출
+    if !isDismissedByAskToBot {
+      delegate?.placeDetailViewController(self, didDismissWith: nil)
+    }
   }
   
   private func setupDetailView() {
@@ -63,12 +67,20 @@ final class PlaceDetailViewController: UIViewController {
 extension PlaceDetailViewController: PlaceDetailViewDelegate {
   func didTapAskToBotButton(with placeInfo: PlaceCardInfo) {
     self.placeInfo = placeInfo
+    isDismissedByAskToBot = true
     dismiss(animated: false) { [weak self] in
       self?.delegate?.placeDetailViewController(self!, didDismissWith: placeInfo)
     }
   }
   
-  func didTapDismissButton() {
+  func didTapDismissButton(reason: DismissReason) {
+    switch reason {
+    case .askToBot:
+      // This case is handled by didTapAskToBotButton
+      break
+    case .backgroundTap:
+      isDismissedByAskToBot = false
     dismiss(animated: false)
+    }
   }
 }

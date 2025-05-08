@@ -27,7 +27,7 @@ enum TabItems: Int, CaseIterable {
     case .myPage:
       let myPageSceneDIContainer = appDIContainer.makeMyPageSceneDIContainer()
       let vc = myPageSceneDIContainer.makeMyPageViewController()
-      return vc
+      return UINavigationController(rootViewController: vc)
     }
   }
   
@@ -71,6 +71,8 @@ final class TabBarController: UIViewController {
   private var selectedTab: TabItems = .map
   private var currentViewController: UIViewController?
   private var viewControllers: [TabItems: UIViewController] = [:]
+  private var tabBarHeightConstraint: Constraint?
+  private let backgroundImageView = UIImageView()
   
   // MARK: - UI Components
   private let tabBarView: UIView = {
@@ -120,11 +122,17 @@ final class TabBarController: UIViewController {
   private func setupUI() {
     view.backgroundColor = .systemBackground
     
+    // Add background image view
+    view.addSubview(backgroundImageView)
+    backgroundImageView.snp.makeConstraints { make in
+      make.edges.equalToSuperview()
+    }
+    
     // Add TabBar View
     view.addSubview(tabBarView)
     tabBarView.snp.makeConstraints { make in
       make.leading.trailing.bottom.equalToSuperview()
-      make.height.equalTo(87)
+      tabBarHeightConstraint = make.height.equalTo(87).constraint
     }
     
     // Add buttons to tabBar
@@ -204,6 +212,38 @@ extension TabBarController {
       viewController = tab.viewController(appDIContainer: appDIContainer)
       viewControllers[tab] = viewController
     }
+    
+    if tab == .aiChat {
+      // Capture current screen
+      let renderer = UIGraphicsImageRenderer(size: view.bounds.size)
+      let image = renderer.image { context in
+        view.drawHierarchy(in: view.bounds, afterScreenUpdates: false)
+      }
+      backgroundImageView.image = image
+      backgroundImageView.isHidden = false
+      
+      tabBarHeightConstraint?.update(offset: 0)
+      centerButton.isHidden = true
+      viewController.view.transform = CGAffineTransform(translationX: 0, y: self.view.bounds.height)
+      self.view.insertSubview(viewController.view, belowSubview: tabBarView)
+      viewController.view.snp.makeConstraints { make in
+        make.top.leading.trailing.equalToSuperview()
+        make.bottom.equalTo(tabBarView.snp.top)
+      }
+      addChild(viewController)
+      viewController.didMove(toParent: self)
+      UIView.animate(withDuration: 0.3) {
+        viewController.view.transform = .identity
+      }
+      currentViewController = viewController
+      selectedTab = tab
+      return
+    }
+    
+    backgroundImageView.isHidden = true
+    tabBarView.isHidden = false
+    tabBarHeightConstraint?.update(offset: 87)
+    centerButton.isHidden = false
     
     addChild(viewController)
     

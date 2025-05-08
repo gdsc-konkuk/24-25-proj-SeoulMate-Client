@@ -21,18 +21,8 @@ final class AuthService: AuthServiceProtocol {
   }
   
   func login(authorizationCode: String) -> AnyPublisher<LoginResponse, NetworkError> {
-    let dummyResponse = LoginResponse(
-        accessToken: "dummy_access_token",
-        refreshToken: "dummy_refresh_token",
-        isFirstLogin: false,
-        userId: 12345
-    )
-    
-    return Just(dummyResponse)
-        .setFailureType(to: NetworkError.self)
-        .eraseToAnyPublisher()
-    //    let endpoint = AuthEndpoint.login(authorizationCode: authorizationCode)
-//    return networkProvider.request(endpoint)
+    let endpoint = AuthEndpoint.login(authorizationCode: authorizationCode)
+    return networkProvider.request(endpoint)
   }
   
   func refreshToken(refreshToken: String, accessToken: String) -> AnyPublisher<RefreshTokenResponse, NetworkError> {

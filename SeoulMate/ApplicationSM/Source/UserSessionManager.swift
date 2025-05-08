@@ -27,7 +27,8 @@ final class UserSessionManager {
   
   // MARK: - Properties
   var isLoggedIn: Bool {
-    return getAccessToken() != nil && getCurrentUserId() != nil
+    let hasTokens = getAccessToken() != nil && getCurrentUserId() != nil
+    return hasTokens && isOnboardingCompleted
   }
   
   var isOnboardingCompleted: Bool {

@@ -599,12 +599,14 @@ extension MapViewController: PlaceDetailViewControllerDelegate {
     
     // PlaceDetailViewController dismiss
     controller.dismiss(animated: false) { [weak self] in
-      // AIChatViewController 생성 및 설정
-      let aiChatVC = AIChatViewController()
-      aiChatVC.configure(with: placeInfo)
-      aiChatVC.modalPresentationStyle = .fullScreen
-      aiChatVC.modalTransitionStyle = .coverVertical
-      self?.present(aiChatVC, animated: true)
+      // Only show AIChatViewController if placeInfo is not nil (meaning it was dismissed via Ask to Bot)
+      let aiChatVC = self?.appDIContainer.makeAIChatSceneDIContainer().makeAIChatViewController()
+      aiChatVC?.configure(with: placeInfo)
+      aiChatVC?.modalPresentationStyle = .fullScreen
+      aiChatVC?.modalTransitionStyle = .coverVertical
+      if let aiChatVC = aiChatVC {
+        self?.present(aiChatVC, animated: true)
+      }
     }
   }
 }

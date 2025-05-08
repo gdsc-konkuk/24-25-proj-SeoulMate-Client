@@ -25,15 +25,12 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
     
     window = UIWindow(windowScene: windowScene)
     
-    let tabBarController = appDIContainer.makeTabBarController()
-    window?.rootViewController = tabBarController
-    
     // MARK: 백엔드 서버 구현시
-//    if UserSessionManager.shared.isLoggedIn {
-//      showMainTabBar()
-//    } else {
-//      showLoginScreen()
-//    }
+    if UserSessionManager.shared.isLoggedIn {
+      showMainTabBar()
+    } else {
+      showLoginScreen()
+    }
     
     window?.makeKeyAndVisible()
   }

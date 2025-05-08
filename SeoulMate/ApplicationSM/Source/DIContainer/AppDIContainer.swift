@@ -51,6 +51,10 @@ final class AppDIContainer {
     return FilterRepository(userService: userService)
   }()
   
+  lazy var chatRepository: ChatRepositoryProtocol = {
+    return ChatRepository(coreDataStack: CoreDataStack.shared)
+  }()
+  
   // MARK: - Use Cases
   // Auth Use Cases
   lazy var loginUseCase: LoginUseCaseProtocol = {
@@ -81,6 +85,11 @@ final class AppDIContainer {
   
   lazy var generatePlacePromptUseCase: GeneratePlacePromptUseCaseProtocol = {
     return GeneratePlacePromptUseCase(placeRepository: placeRepository)
+  }()
+  
+  // Chat Use Cases
+  lazy var chatUseCase: ChatUseCaseProtocol = {
+    return ChatUseCase(repository: chatRepository)
   }()
   
   // MARK: - Scene DIContainers
@@ -175,6 +184,6 @@ final class AIChatSceneDIContainer {
   }
   
   func makeAIChatViewController() -> AIChatViewController {
-    return AIChatViewController()
+    return AIChatViewController(useCase: appDIContainer.chatUseCase)
   }
 }

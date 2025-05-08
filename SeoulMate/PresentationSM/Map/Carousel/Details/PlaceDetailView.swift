@@ -11,7 +11,12 @@ import GooglePlaces
 
 protocol PlaceDetailViewDelegate: AnyObject {
   func didTapAskToBotButton(with placeInfo: PlaceCardInfo)
-  func didTapDismissButton()
+  func didTapDismissButton(reason: DismissReason)
+}
+
+enum DismissReason {
+  case askToBot
+  case backgroundTap
 }
 
 final class PlaceDetailView: UIView {
@@ -189,7 +194,7 @@ final class PlaceDetailView: UIView {
   }
   
   @objc private func handleDismissButtonTap() {
-    delegate?.didTapDismissButton()
+    delegate?.didTapDismissButton(reason: .backgroundTap)
   }
   
   // MARK: - Configuration
