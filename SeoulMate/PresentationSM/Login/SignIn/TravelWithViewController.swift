@@ -70,6 +70,12 @@ final class TravelWithViewController: UIViewController {
     let stackView = DynamicStackView()
     stackView.isSingleSelectionMode = true
     stackView.buttonFont = .mediumFont(ofSize: 16)
+    stackView.buttonHeight = 40
+    stackView.buttonCornerRadius = 20
+    stackView.buttonVerticalPadding = 10
+    stackView.buttonHorizontalPadding = 18
+    stackView.horizontalSpacing = 8
+    stackView.verticalSpacing = 12
     return stackView
   }()
   

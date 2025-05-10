@@ -48,9 +48,15 @@ final class PlaceCardView: UIView {
   }
   
   // MARK: - Configuration
-  // MARK: - Configuration
   func configure(with placeInfo: PlaceCardInfo) {
-    placeName?.text = placeInfo.name
+    // 장소 이름 설정
+    let nameAttributes: [NSAttributedString.Key: Any] = [
+      .font: UIFont(name: "SFPro-Bold", size: 18) ?? .systemFont(ofSize: 18, weight: .bold),
+      .foregroundColor: UIColor.black
+    ]
+    let nameAttributedString = NSAttributedString(string: placeInfo.name, attributes: nameAttributes)
+    placeName?.attributedText = nameAttributedString
+    
     placeAddress?.text = placeInfo.address
     placeDistance?.text = placeInfo.distanceText
     placeReview?.text = placeInfo.ratingText
@@ -102,5 +108,13 @@ final class PlaceCardView: UIView {
     placeImageView?.layer.cornerRadius = 8
     placeImageView?.clipsToBounds = true
     placeImageView?.contentMode = .scaleAspectFill
+
+    placeName?.numberOfLines = 0
+    placeName?.lineBreakMode = .byWordWrapping
+    placeName?.adjustsFontSizeToFitWidth = false
+    
+    placeAddress?.numberOfLines = 0
+    placeAddress?.lineBreakMode = .byWordWrapping
+    placeAddress?.adjustsFontSizeToFitWidth = false
   }
 }

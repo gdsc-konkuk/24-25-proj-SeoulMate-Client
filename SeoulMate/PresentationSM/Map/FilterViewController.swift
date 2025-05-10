@@ -82,6 +82,13 @@ final class FilterViewController: UIViewController {
   private lazy var companionStackView: DynamicStackView = {
     let stackView = DynamicStackView()
     stackView.isSingleSelectionMode = true  // 단일 선택
+    stackView.buttonFont = .mediumFont(ofSize: 16)
+    stackView.buttonHeight = 40
+    stackView.buttonCornerRadius = 20
+    stackView.buttonVerticalPadding = 10
+    stackView.buttonHorizontalPadding = 18
+    stackView.horizontalSpacing = 8
+    stackView.verticalSpacing = 12
     return stackView
   }()
   
@@ -96,6 +103,13 @@ final class FilterViewController: UIViewController {
   private lazy var purposeStackView: DynamicStackView = {
     let stackView = DynamicStackView()
     stackView.isSingleSelectionMode = false  // 다중 선택
+    stackView.buttonFont = .mediumFont(ofSize: 16)
+    stackView.buttonHeight = 40
+    stackView.buttonCornerRadius = 20
+    stackView.buttonVerticalPadding = 10
+    stackView.buttonHorizontalPadding = 18
+    stackView.horizontalSpacing = 8
+    stackView.verticalSpacing = 12
     return stackView
   }()
   

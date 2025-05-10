@@ -133,8 +133,12 @@ final class PlaceDetailView: UIView {
     addSubview(tagStackView)
     tagStackView.normalBackgroundColor = .main100
     tagStackView.normalTextColor = .main500
-    tagStackView.buttonFont = .regularFont(ofSize: 14)
-    tagStackView.buttonVerticalPadding = 2
+    tagStackView.buttonFont = .mediumFont(ofSize: 12)
+    tagStackView.buttonVerticalPadding = 4
+    tagStackView.buttonHorizontalPadding = 8
+    tagStackView.horizontalSpacing = 8
+    tagStackView.verticalSpacing = 12
+    tagStackView.buttonCornerRadius = 20
     tagStackView.snp.makeConstraints { make in
       make.top.equalTo(imageCarousel.snp.bottom).offset(16)
       make.left.equalToSuperview().offset(16)

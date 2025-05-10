@@ -17,6 +17,10 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     _ application: UIApplication,
     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
   ) -> Bool {
+    // Force English language for the app
+    UserDefaults.standard.set(["en"], forKey: "AppleLanguages")
+    UserDefaults.standard.synchronize()
+    
     // Maps, Places
     if let apiKey = Bundle.main.object(forInfoDictionaryKey: "GOOGLE_MAP_API_KEY") as? String {
       GMSServices.provideAPIKey(apiKey)

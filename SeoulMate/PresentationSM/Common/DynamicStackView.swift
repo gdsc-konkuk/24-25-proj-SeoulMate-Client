@@ -7,6 +7,7 @@
 
 import UIKit
 import Combine
+import SnapKit
 
 final class DynamicStackView: UIStackView {
   
@@ -14,8 +15,8 @@ final class DynamicStackView: UIStackView {
   let selectionPublisher = PassthroughSubject<(index: Int, title: String, isSelected: Bool), Never>()
   let selectedIndicesPublisher =  CurrentValueSubject<Set<Int>, Never>(Set<Int>())
   
-  var verticalSpacing: CGFloat = 16
-  var horizontalSpacing: CGFloat = 10
+  var verticalSpacing: CGFloat = 12
+  var horizontalSpacing: CGFloat = 8
   var maxWidth: CGFloat = UIApplication.screenWidth - 40
   
   var buttons: [CommonRectangleButton] = []
@@ -37,15 +38,27 @@ final class DynamicStackView: UIStackView {
   var normalTextColor: UIColor = .gray500
   var selectedTextColor: UIColor = .main500
   
-  private var subscriptions = Set<AnyCancellable>()
-  
-  var buttonFont: UIFont = .systemFont(ofSize: 13) {
+  // MARK: - Button Style
+  var buttonFont: UIFont = .mediumFont(ofSize: 13) {
     didSet {
       updateButtonHeights()
     }
   }
   
-  var buttonVerticalPadding: CGFloat = 4
+  // 버튼 크기 관련
+  var buttonHeight: CGFloat = 36
+  var buttonCornerRadius: CGFloat = 8
+  
+  // 버튼 내부 여백
+  var buttonVerticalPadding: CGFloat = 8
+  var buttonHorizontalPadding: CGFloat = 12
+  
+  // 버튼 테두리
+  var buttonBorderWidth: CGFloat = 1
+  var normalBorderColor: UIColor = .gray500
+  var selectedBorderColor: UIColor = .main500
+  
+  private var subscriptions = Set<AnyCancellable>()
   
   // MARK: - LifeCycle
   override init(frame: CGRect) {
@@ -135,13 +148,11 @@ extension DynamicStackView {
           if indices.contains(buttonIndex) {
             button.backgroundColor = self.selectedBackgroundColor
             button.setTitleColor(self.selectedTextColor, for: .normal)
-            button.layer.borderColor = UIColor.main500.cgColor
-            button.layer.borderWidth = 1
+            button.layer.borderColor = self.selectedBorderColor.cgColor
           } else {
             button.backgroundColor = self.normalBackgroundColor
             button.setTitleColor(self.normalTextColor, for: .normal)
-            button.layer.borderColor = UIColor.gray500.cgColor
-            button.layer.borderWidth = 1
+            button.layer.borderColor = self.normalBorderColor.cgColor
           }
         }
       }
@@ -152,7 +163,7 @@ extension DynamicStackView {
     self.axis = .vertical
     alignment = .leading
     spacing = verticalSpacing
-    distribution = .fillProportionally
+    distribution = .fill
   }
   
   private func createButton(withTitle title: String, at index: Int) -> CommonRectangleButton {
@@ -163,8 +174,26 @@ extension DynamicStackView {
       backgroundColor: normalBackgroundColor
     )
     button.tag = index
-    button.contentEdgeInsets = UIEdgeInsets(top: buttonVerticalPadding, left: 12, bottom: buttonVerticalPadding, right: 12)
+    
+    // 버튼 스타일 설정
+    button.layer.cornerRadius = buttonCornerRadius
+    button.layer.borderWidth = buttonBorderWidth
+    button.layer.borderColor = normalBorderColor.cgColor
+    
+    // 버튼 내부 여백 설정
+    button.contentEdgeInsets = UIEdgeInsets(
+      top: buttonVerticalPadding,
+      left: buttonHorizontalPadding,
+      bottom: buttonVerticalPadding,
+      right: buttonHorizontalPadding
+    )
+    
     button.addTarget(self, action: #selector(buttonTapped(_:)), for: .touchUpInside)
+    
+    // 버튼 높이 제약조건
+    button.snp.makeConstraints { make in
+      make.height.equalTo(buttonHeight)
+    }
     
     return button
   }
@@ -181,6 +210,9 @@ extension DynamicStackView {
   private func updateButtonHeights() {
     for button in buttons {
       button.titleLabel?.font = buttonFont
+      button.snp.updateConstraints { make in
+        make.height.equalTo(buttonHeight)
+      }
     }
   }
 }

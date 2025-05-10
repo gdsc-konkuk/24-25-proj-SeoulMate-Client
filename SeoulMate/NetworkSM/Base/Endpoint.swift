@@ -15,6 +15,7 @@ protocol Endpoint: URLRequestConvertible {
   var headers: [String: String]? { get }
   var parameters: Parameters? { get }
   var encoding: ParameterEncoding { get }
+  var requiresAuth: Bool { get }
 }
 
 extension Endpoint {
@@ -22,11 +23,23 @@ extension Endpoint {
     return "https://whitepiano-codeserver.pe.kr"
   }
   
+  var requiresAuth: Bool {
+    return true // 기본적으로 인증이 필요하다고 가정
+  }
+  
   var headers: [String: String]? {
-    return [
+    var headers: [String: String] = [
       "Content-Type": "application/json",
       "Accept": "application/json"
     ]
+    
+    if requiresAuth {
+      if let accessToken = UserDefaults.standard.string(forKey: "accessToken") {
+        headers["Authorization"] = "Bearer \(accessToken)"
+      }
+    }
+    
+    return headers
   }
   
   var encoding: ParameterEncoding {

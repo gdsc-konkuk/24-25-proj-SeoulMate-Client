@@ -1,0 +1,139 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<document type="com.apple.InterfaceBuilder3.CocoaTouch.XIB" version="3.0" toolsVersion="23094" targetRuntime="iOS.CocoaTouch" propertyAccessControl="none" useAutolayout="YES" useTraitCollections="YES" useSafeAreas="YES" colorMatched="YES">
+    <device id="retina6_12" orientation="portrait" appearance="light"/>
+    <dependencies>
+        <deployment identifier="iOS"/>
+        <plugIn identifier="com.apple.InterfaceBuilder.IBCocoaTouchPlugin" version="23084"/>
+        <capability name="Safe area layout guides" minToolsVersion="9.0"/>
+        <capability name="System colors in document resources" minToolsVersion="11.0"/>
+        <capability name="documents saved in the Xcode 8 format" minToolsVersion="8.0"/>
+    </dependencies>
+    <objects>
+        <placeholder placeholderIdentifier="IBFilesOwner" id="-1" userLabel="File's Owner" customClass="PlaceCardView" customModule="SeoulMate" customModuleProvider="target">
+            <connections>
+                <outlet property="placeAddress" destination="RRc-QH-eJd" id="4Zx-xM-HxY"/>
+                <outlet property="placeDistance" destination="9eo-cZ-lcQ" id="aVT-If-50B"/>
+                <outlet property="placeImageView" destination="JbE-3D-Re2" id="g8i-8i-lE9"/>
+                <outlet property="placeName" destination="W9I-jz-axM" id="Qoh-ry-cPD"/>
+                <outlet property="placeReview" destination="k58-et-BIc" id="xjX-AG-Gqw"/>
+            </connections>
+        </placeholder>
+        <placeholder placeholderIdentifier="IBFirstResponder" id="-2" customClass="UIResponder"/>
+        <view contentMode="scaleToFill" insetsLayoutMarginsFromSafeArea="NO" id="iN0-l3-epB">
+            <rect key="frame" x="0.0" y="0.0" width="327" height="143"/>
+            <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
+            <subviews>
+                <imageView clipsSubviews="YES" userInteractionEnabled="NO" contentMode="scaleAspectFit" horizontalHuggingPriority="251" verticalHuggingPriority="251" translatesAutoresizingMaskIntoConstraints="NO" id="JbE-3D-Re2">
+                    <rect key="frame" x="16" y="16" width="99" height="111"/>
+                    <constraints>
+                        <constraint firstAttribute="height" relation="greaterThanOrEqual" constant="111" id="6Ne-RN-55K"/>
+                        <constraint firstAttribute="width" relation="greaterThanOrEqual" constant="99" id="8xa-2g-pK9"/>
+                        <constraint firstAttribute="width" constant="99" id="BbT-RG-DCE"/>
+                        <constraint firstAttribute="height" constant="111" id="maT-1P-76D"/>
+                    </constraints>
+                </imageView>
+                <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" usesAttributedText="YES" lineBreakMode="tailTruncation" numberOfLines="0" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="W9I-jz-axM">
+                    <rect key="frame" x="127.00000000000001" y="16" width="134.33333333333337" height="21"/>
+                    <attributedString key="attributedText">
+                        <fragment content="Gyeongbokgung">
+                            <attributes>
+                                <color key="NSColor" red="0.098039215686274508" green="0.098039215686274508" blue="0.11372549019607843" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
+                                <font key="NSFont" size="18" name="SFPro-Bold"/>
+                                <paragraphStyle key="NSParagraphStyle" alignment="left" lineBreakMode="wordWrapping" baseWritingDirection="natural" tighteningFactorForTruncation="0.0"/>
+                            </attributes>
+                        </fragment>
+                    </attributedString>
+                    <nil key="highlightedColor"/>
+                </label>
+                <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" usesAttributedText="YES" lineBreakMode="tailTruncation" numberOfLines="0" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="RRc-QH-eJd">
+                    <rect key="frame" x="127" y="41" width="188" height="14"/>
+                    <attributedString key="attributedText">
+                        <fragment content="161, Sajik-ro, Jongno-gu, Seoul">
+                            <attributes>
+                                <color key="NSColor" red="0.58823529411764708" green="0.58823529411764708" blue="0.62745098039215685" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
+                                <font key="NSFont" size="12" name="SFPro-Medium"/>
+                                <paragraphStyle key="NSParagraphStyle" alignment="left" lineBreakMode="wordWrapping" baseWritingDirection="natural" tighteningFactorForTruncation="0.0"/>
+                            </attributes>
+                        </fragment>
+                    </attributedString>
+                    <nil key="highlightedColor"/>
+                </label>
+                <imageView clipsSubviews="YES" userInteractionEnabled="NO" contentMode="scaleAspectFit" horizontalHuggingPriority="251" verticalHuggingPriority="251" image="plain" translatesAutoresizingMaskIntoConstraints="NO" id="DfH-Yv-lxr">
+                    <rect key="frame" x="127" y="108" width="15" height="15"/>
+                    <constraints>
+                        <constraint firstAttribute="height" constant="15" id="Ra1-8b-mrn"/>
+                        <constraint firstAttribute="width" constant="15" id="z1P-6G-lmN"/>
+                    </constraints>
+                </imageView>
+                <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" usesAttributedText="YES" lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="9eo-cZ-lcQ">
+                    <rect key="frame" x="142" y="107" width="58" height="16"/>
+                    <constraints>
+                        <constraint firstAttribute="width" constant="58" id="VIf-Iw-RPS"/>
+                    </constraints>
+                    <attributedString key="attributedText">
+                        <fragment content="1.2km">
+                            <attributes>
+                                <color key="NSColor" red="0.098039215690000001" green="0.098039215690000001" blue="0.1137254902" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
+                                <font key="NSFont" size="13" name="SFPro-Medium"/>
+                                <paragraphStyle key="NSParagraphStyle" alignment="left" lineBreakMode="wordWrapping" baseWritingDirection="natural" tighteningFactorForTruncation="0.0"/>
+                            </attributes>
+                        </fragment>
+                    </attributedString>
+                    <nil key="highlightedColor"/>
+                </label>
+                <imageView clipsSubviews="YES" userInteractionEnabled="NO" contentMode="scaleAspectFit" horizontalHuggingPriority="251" verticalHuggingPriority="251" image="star" translatesAutoresizingMaskIntoConstraints="NO" id="o9Y-gA-xHr">
+                    <rect key="frame" x="203" y="107" width="16" height="16"/>
+                    <constraints>
+                        <constraint firstAttribute="width" relation="greaterThanOrEqual" constant="16" id="Djy-Qo-8kK"/>
+                        <constraint firstAttribute="height" relation="greaterThanOrEqual" constant="16" id="cUK-8Z-o4s"/>
+                    </constraints>
+                </imageView>
+                <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" usesAttributedText="YES" lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="k58-et-BIc">
+                    <rect key="frame" x="223" y="107" width="43" height="16"/>
+                    <attributedString key="attributedText">
+                        <fragment content="4.0 (23)">
+                            <attributes>
+                                <color key="NSColor" red="0.098039215690000001" green="0.098039215690000001" blue="0.1137254902" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
+                                <font key="NSFont" size="13" name="SFPro-Medium"/>
+                                <paragraphStyle key="NSParagraphStyle" alignment="left" lineBreakMode="wordWrapping" baseWritingDirection="natural" tighteningFactorForTruncation="0.0"/>
+                            </attributes>
+                        </fragment>
+                    </attributedString>
+                    <nil key="highlightedColor"/>
+                </label>
+            </subviews>
+            <viewLayoutGuide key="safeArea" id="vUN-kp-3ea"/>
+            <color key="backgroundColor" systemColor="systemBackgroundColor"/>
+            <constraints>
+                <constraint firstItem="RRc-QH-eJd" firstAttribute="top" secondItem="W9I-jz-axM" secondAttribute="bottom" constant="4" id="5bA-iH-xai"/>
+                <constraint firstItem="k58-et-BIc" firstAttribute="leading" secondItem="o9Y-gA-xHr" secondAttribute="trailing" constant="4" id="9FK-YP-Ws4"/>
+                <constraint firstItem="9eo-cZ-lcQ" firstAttribute="leading" secondItem="DfH-Yv-lxr" secondAttribute="trailing" id="Azv-xa-C7V"/>
+                <constraint firstAttribute="bottom" secondItem="o9Y-gA-xHr" secondAttribute="bottom" constant="20" id="HS3-bP-AZR"/>
+                <constraint firstItem="W9I-jz-axM" firstAttribute="leading" secondItem="JbE-3D-Re2" secondAttribute="trailing" constant="12" id="Hgt-Zh-zjt"/>
+                <constraint firstItem="DfH-Yv-lxr" firstAttribute="leading" secondItem="JbE-3D-Re2" secondAttribute="trailing" constant="12" id="LU6-5V-l8G"/>
+                <constraint firstItem="W9I-jz-axM" firstAttribute="leading" secondItem="JbE-3D-Re2" secondAttribute="trailing" constant="12" id="OFg-8u-HEH"/>
+                <constraint firstItem="o9Y-gA-xHr" firstAttribute="leading" secondItem="9eo-cZ-lcQ" secondAttribute="trailing" constant="3" id="SGN-uZ-wCK"/>
+                <constraint firstItem="RRc-QH-eJd" firstAttribute="leading" secondItem="JbE-3D-Re2" secondAttribute="trailing" constant="12" id="U22-O4-Nz5"/>
+                <constraint firstItem="JbE-3D-Re2" firstAttribute="leading" secondItem="vUN-kp-3ea" secondAttribute="leading" constant="16" id="WKu-uf-tzI"/>
+                <constraint firstAttribute="bottom" secondItem="9eo-cZ-lcQ" secondAttribute="bottom" constant="20" id="Z7F-QT-K3y"/>
+                <constraint firstAttribute="trailing" secondItem="RRc-QH-eJd" secondAttribute="trailing" constant="12" id="ZVl-Ma-Sq2"/>
+                <constraint firstAttribute="bottom" secondItem="DfH-Yv-lxr" secondAttribute="bottom" constant="20" id="cCI-vI-lzT"/>
+                <constraint firstItem="RRc-QH-eJd" firstAttribute="top" secondItem="W9I-jz-axM" secondAttribute="bottom" constant="4" id="dwk-Wo-hye"/>
+                <constraint firstAttribute="bottom" secondItem="k58-et-BIc" secondAttribute="bottom" constant="20" id="gM8-T1-0i5"/>
+                <constraint firstItem="JbE-3D-Re2" firstAttribute="top" secondItem="iN0-l3-epB" secondAttribute="top" constant="16" id="ghD-E7-GzR"/>
+                <constraint firstItem="W9I-jz-axM" firstAttribute="top" secondItem="iN0-l3-epB" secondAttribute="top" constant="16" id="oHS-cu-VtU"/>
+                <constraint firstItem="W9I-jz-axM" firstAttribute="leading" secondItem="JbE-3D-Re2" secondAttribute="trailing" constant="12" id="trU-c9-x5Y"/>
+                <constraint firstAttribute="bottom" secondItem="JbE-3D-Re2" secondAttribute="bottom" constant="16" id="wz6-QF-o2L"/>
+            </constraints>
+            <freeformSimulatedSizeMetrics key="simulatedDestinationMetrics"/>
+            <point key="canvasLocation" x="-11.450381679389313" y="-273.59154929577466"/>
+        </view>
+    </objects>
+    <resources>
+        <image name="plain" width="7.5" height="8"/>
+        <image name="star" width="8" height="7.5"/>
+        <systemColor name="systemBackgroundColor">
+            <color white="1" alpha="1" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
+        </systemColor>
+    </resources>
+</document>

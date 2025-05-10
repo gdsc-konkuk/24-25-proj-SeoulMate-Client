@@ -431,43 +431,18 @@ extension MapViewController {
       self.mapView.clear()
       self.addMarker(at: place.coordinate, title: place.name)
       
-      // 단일 카드 표시
-      self.showPlaceCard(for: place)
+      // 현재 위치 가져오기
+      let currentLocation = self.locationManager.location?.coordinate ?? self.initialLocation
       
-      // TODO: 서버에서 추천 장소 가져오기
-      // self.fetchRecommendedPlaces(coordinate: place.coordinate)
+      // 첫 번째 장소 정보 생성
+      let firstPlaceInfo = PlaceCardInfo.from(place: place, currentLocation: currentLocation)
+      
+      // 추천 장소 가져오기
+      self.fetchRecommendedPlaces(coordinate: place.coordinate, firstPlaceInfo: firstPlaceInfo)
     }
   }
   
-  private func showPlaceCard(for place: GMSPlace) {
-    // 현재 위치 가져오기
-    let currentLocation = locationManager.location?.coordinate ?? initialLocation
-    
-    // PlaceCardInfo 생성
-    let placeInfo = PlaceCardInfo.from(place: place, currentLocation: currentLocation)
-    
-    let dummyPlaces: [PlaceCardInfo] = (1...4).map { idx in
-      PlaceCardInfo(
-        placeID: nil,
-        name: "Dummy Place \(idx)",
-        address: "Seoul, Dummy Address \(idx)",
-        distance: Double(500 * idx), // 500m, 1000m, ...
-        rating: Float(3 + idx % 2),  // 3.0, 4.0, 3.0, 4.0
-        ratingCount: 10 * idx,
-        description: "이건 더미데이터입니다구리"
-      )
-    }
-    
-    // 단일 장소 표시
-    currentPlaces = [placeInfo] + dummyPlaces
-    placeCardsContainer.configure(with: currentPlaces)
-    placeCardsContainer.show(animated: true)
-    // ★ 항상 첫 번째 카드로 이동
-    placeCardsContainer.scrollToIndex(0, animated: false)
-  }
-  
-  // 2. 서버에서 추천 장소 가져오기
-  private func fetchRecommendedPlaces(coordinate: CLLocationCoordinate2D) {
+  private func fetchRecommendedPlaces(coordinate: CLLocationCoordinate2D, firstPlaceInfo: PlaceCardInfo) {
     getRecommendedPlacesUseCase.execute(
       x: coordinate.longitude,
       y: coordinate.latitude
@@ -481,70 +456,85 @@ extension MapViewController {
         print("추천 장소 요청 실패: \(error)")
       }
     } receiveValue: { [weak self] response in
-      self?.updateUIWithRecommendedPlaces(response.places)
+      self?.handleRecommendedPlaces(response.places, firstPlaceInfo: firstPlaceInfo)
     }
     .store(in: &cancellables)
   }
   
-  // 3. UI 업데이트
-  private func updateUIWithRecommendedPlaces(_ places: [PlaceResponse]) {
-    guard let firstPlace = currentPlaces.first else { return }
+  private func handleRecommendedPlaces(_ places: [RecommendedPlace], firstPlaceInfo: PlaceCardInfo) {
+    // 모든 장소 정보를 한번에 가져오기 위한 그룹
+    let group = DispatchGroup()
+    var recommendedPlaceInfos: [PlaceCardInfo] = []
+    var recommendedMarkers: [GMSMarker] = []
     
-    // 현재 위치
-    let currentLocation = locationManager.location?.coordinate ?? initialLocation
-    
-    // 추천 장소들을 PlaceCardInfo로 변환
-    let recommendedPlaces = places.map { place -> PlaceCardInfo in
-      let coordinate = CLLocationCoordinate2D(
-        latitude: place.coordinate.latitude,
-        longitude: place.coordinate.longitude
-      )
+    // 각 추천 장소에 대해 구글 Places API로 상세 정보를 가져옵니다
+    for (index, place) in places.enumerated() {
+      group.enter()
       
-      let placeLocation = CLLocation(latitude: coordinate.latitude, longitude: coordinate.longitude)
-      let userLocation = CLLocation(latitude: currentLocation.latitude, longitude: currentLocation.longitude)
-      let distance = userLocation.distance(from: placeLocation)
-      
-      return PlaceCardInfo(
-        placeID: place.id,
-        name: place.id,
-        address: place.address,
-        distance: distance,
-        rating: nil,
-        ratingCount: nil,
-        description: place.description
-      )
+      placesClient.fetchPlace(
+        fromPlaceID: place.placeId,
+        placeFields: [.name, .placeID, .coordinate, .formattedAddress, .rating, .userRatingsTotal, .photos],
+        sessionToken: nil
+      ) { [weak self] (googlePlace, error) in
+        defer { group.leave() }
+        
+        guard let self = self,
+              let googlePlace = googlePlace,
+              error == nil else { return }
+        
+        // 현재 위치 가져오기
+        let currentLocation = self.locationManager.location?.coordinate ?? self.initialLocation
+        
+        // PlaceCardInfo 생성
+        let placeInfo = PlaceCardInfo.from(place: googlePlace, currentLocation: currentLocation)
+        
+        // 마커 생성
+        let marker = GMSMarker(position: googlePlace.coordinate)
+        marker.title = googlePlace.name
+        marker.map = self.mapView
+        
+        // 배열에 추가 (순서 보장)
+        DispatchQueue.main.async {
+          // 배열의 크기가 index보다 작으면 nil로 채움
+          while recommendedPlaceInfos.count <= index {
+            recommendedPlaceInfos.append(placeInfo)
+          }
+          while recommendedMarkers.count <= index {
+            recommendedMarkers.append(marker)
+          }
+          
+          // 해당 인덱스에 정보 저장
+          recommendedPlaceInfos[index] = placeInfo
+          recommendedMarkers[index] = marker
+        }
+      }
     }
     
-    // 첫 번째 장소(사용자가 선택한 것) + 추천 장소들
-    var allPlaces = [firstPlace]
-    allPlaces.append(contentsOf: recommendedPlaces)
-    
-    // 카드뷰 업데이트
-    currentPlaces = allPlaces
-    placeCardsContainer.configure(with: allPlaces)
-    
-    // 추천 장소 마커 추가
-    addRecommendedMarkers(places)
+    // 모든 장소 정보를 가져온 후 UI 업데이트
+    group.notify(queue: .main) { [weak self] in
+      guard let self = self else { return }
+      
+      // 첫 번째 장소와 추천 장소들을 합침
+      self.currentPlaces = [firstPlaceInfo] + recommendedPlaceInfos
+      
+      // 첫 번째 마커가 있는 경우에만 추가
+      if let firstMarker = self.currentMarkers.first {
+        self.currentMarkers = [firstMarker] + recommendedMarkers
+      } else {
+        self.currentMarkers = recommendedMarkers
+      }
+      
+      // 카드뷰 업데이트
+      self.placeCardsContainer.configure(with: self.currentPlaces)
+      self.placeCardsContainer.show(animated: true)
+      self.placeCardsContainer.scrollToIndex(0, animated: false)
+    }
   }
   
-  private func addRecommendedMarkers(_ places: [PlaceResponse]) {
-    // 기존 마커 제거
-    currentMarkers.forEach { $0.map = nil }
-    currentMarkers.removeAll()
-    
-    // 새로운 마커 추가
-    for place in places {
-      let coordinate = CLLocationCoordinate2D(
-        latitude: place.coordinate.latitude,
-        longitude: place.coordinate.longitude
-      )
-      
-      let marker = GMSMarker(position: coordinate)
-      marker.title = place.id
-      marker.snippet = place.description
-      marker.map = mapView
-      currentMarkers.append(marker)
-    }
+  // 3. UI 업데이트
+  private func updateUIWithRecommendedPlaces(_ places: [RecommendedPlace]) {
+    // 첫 번째 장소는 이미 표시되어 있으므로 건너뜁니다
+    handleRecommendedPlaces(places, firstPlaceInfo: currentPlaces[0])
   }
   
   private func moveMapToLocation(coordinate: CLLocationCoordinate2D) {
@@ -648,10 +638,30 @@ extension MapViewController: GMSMapViewDelegate {
       sessionToken: nil
     ) { [weak self] (place, error) in
       guard let self = self, let place = place, error == nil else { return }
+      
+      // 지도 이동
       self.moveMapToLocation(coordinate: place.coordinate)
+      
+      // 기존 마커 제거
       self.mapView.clear()
-      self.addMarker(at: place.coordinate, title: place.name)
-      self.showPlaceCard(for: place)
+      
+      // 현재 위치 가져오기
+      let currentLocation = self.locationManager.location?.coordinate ?? self.initialLocation
+      
+      // 첫 번째 장소 정보 생성
+      let firstPlaceInfo = PlaceCardInfo.from(place: place, currentLocation: currentLocation)
+      
+      // 첫 번째 마커 생성 및 추가
+      let firstMarker = GMSMarker(position: place.coordinate)
+      firstMarker.title = place.name
+      firstMarker.map = self.mapView
+      
+      // 현재 마커와 장소 정보 초기화
+      self.currentMarkers = [firstMarker]
+      self.currentPlaces = [firstPlaceInfo]
+      
+      // 추천 장소 가져오기
+      self.fetchRecommendedPlaces(coordinate: place.coordinate, firstPlaceInfo: firstPlaceInfo)
     }
   }
 }

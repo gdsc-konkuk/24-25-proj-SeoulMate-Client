@@ -26,8 +26,14 @@ struct CoordinateResponse: Decodable {
   }
 }
 
+struct RecommendedPlace: Decodable {
+  let placeId: String
+  let description: String
+  let reason: String
+}
+
 struct RecommendedPlacesResponse: Decodable {
-  let places: [PlaceResponse]
+  let places: [RecommendedPlace]
 }
 
 struct PlacePromptRequest: Encodable {
