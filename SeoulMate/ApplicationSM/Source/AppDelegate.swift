@@ -26,10 +26,12 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
       print("Error: Google Map Api Key 설정 안됨")
     }
     
-    if let clientID = Bundle.main.object(forInfoDictionaryKey: "GIDClientID") as? String {
-      GIDSignIn.sharedInstance.configuration = GIDConfiguration(clientID: clientID)
+    if let clientID = Bundle.main.object(forInfoDictionaryKey: "GOOGLE_LOGIN_CLIENT_ID") as? String {
+      // Google Sign-In 설정
+      let clientIDWithDomain = clientID.hasSuffix(".apps.googleusercontent.com") ? clientID : "\(clientID).apps.googleusercontent.com"
+      GIDSignIn.sharedInstance.configuration = GIDConfiguration(clientID: clientIDWithDomain)
     } else {
-      print("ERROR: Google Client ID가 Info.plist에 설정되지 않았습니다")
+      print("ERROR: Google Login Client ID가 Info.plist에 설정되지 않았습니다")
       // TODO: Alert
     }
     

@@ -8,23 +8,23 @@
 import Foundation
 
 // MARK: - Auth Models
-struct LoginRequest: Encodable {
-  let authorizationCode: String
+struct LoginRequest: Codable {
+  let idToken: String
 }
 
-struct LoginResponse: Decodable {
+struct LoginResponse: Codable {
   let accessToken: String
   let refreshToken: String
   let isFirstLogin: Bool
-  let userId: Int64
+  let userId: String
 }
 
-struct RefreshTokenRequest: Encodable {
+struct RefreshTokenRequest: Codable {
   let refreshToken: String
   let accessToken: String
 }
 
-struct RefreshTokenResponse: Decodable {
+struct RefreshTokenResponse: Codable {
   let refreshToken: String
   let accessToken: String
 }

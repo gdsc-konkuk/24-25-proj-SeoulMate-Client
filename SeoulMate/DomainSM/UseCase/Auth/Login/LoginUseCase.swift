@@ -15,7 +15,7 @@ final class LoginUseCase: LoginUseCaseProtocol {
     self.authRepository = authRepository
   }
   
-  func execute(authorizationCode: String) -> AnyPublisher<LoginResponse, NetworkError> {
-    return authRepository.login(authorizationCode: authorizationCode)
+  func execute(idToken: String) -> AnyPublisher<LoginResponse, NetworkError> {
+    return authRepository.login(idToken: idToken)
   }
 }

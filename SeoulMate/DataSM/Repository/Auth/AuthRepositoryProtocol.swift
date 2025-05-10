@@ -9,6 +9,6 @@ import Foundation
 import Combine
 
 protocol AuthRepositoryProtocol {
-  func login(authorizationCode: String) -> AnyPublisher<LoginResponse, NetworkError>
+  func login(idToken: String) -> AnyPublisher<LoginResponse, NetworkError>
   func refreshToken(refreshToken: String, accessToken: String) -> AnyPublisher<RefreshTokenResponse, NetworkError>
 }

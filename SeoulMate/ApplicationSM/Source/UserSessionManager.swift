@@ -105,7 +105,7 @@ final class UserSessionManager {
   }
   
   // MARK: - User ID Management
-  func saveUserId(_ userId: Int64) {
+  func saveUserId(_ userId: String) {
     UserDefaults.standard.set(userId, forKey: userIdKey)
     UserDefaults.standard.synchronize()
   }

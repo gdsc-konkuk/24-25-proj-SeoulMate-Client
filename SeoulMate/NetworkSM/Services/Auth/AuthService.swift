@@ -9,7 +9,7 @@ import Foundation
 import Combine
 
 protocol AuthServiceProtocol {
-  func login(authorizationCode: String) -> AnyPublisher<LoginResponse, NetworkError>
+  func login(idToken: String) -> AnyPublisher<LoginResponse, NetworkError>
   func refreshToken(refreshToken: String, accessToken: String) -> AnyPublisher<RefreshTokenResponse, NetworkError>
 }
 
@@ -20,8 +20,8 @@ final class AuthService: AuthServiceProtocol {
     self.networkProvider = networkProvider
   }
   
-  func login(authorizationCode: String) -> AnyPublisher<LoginResponse, NetworkError> {
-    let endpoint = AuthEndpoint.login(authorizationCode: authorizationCode)
+  func login(idToken: String) -> AnyPublisher<LoginResponse, NetworkError> {
+    let endpoint = AuthEndpoint.login(idToken: idToken)
     return networkProvider.request(endpoint)
   }
   

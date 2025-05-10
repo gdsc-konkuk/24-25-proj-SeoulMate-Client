@@ -11,6 +11,7 @@
 		8026CE062DC773C40090D1F0 /* GooglePlaces in Frameworks */ = {isa = PBXBuildFile; productRef = 8026CE052DC773C40090D1F0 /* GooglePlaces */; };
 		8026CE092DC773F30090D1F0 /* GoogleMaps in Frameworks */ = {isa = PBXBuildFile; productRef = 8026CE082DC773F30090D1F0 /* GoogleMaps */; };
 		804CF0382D9565EB0050AE28 /* GoogleSignIn in Frameworks */ = {isa = PBXBuildFile; productRef = 804CF0372D9565EB0050AE28 /* GoogleSignIn */; };
+		80DC147A2DCC8FAF00404AB4 /* MessageKit in Frameworks */ = {isa = PBXBuildFile; productRef = 80DC14792DCC8FAF00404AB4 /* MessageKit */; };
 		80F0FA4E2D956F1D00E95E55 /* SnapKit in Frameworks */ = {isa = PBXBuildFile; productRef = 80F0FA4D2D956F1D00E95E55 /* SnapKit */; };
 		80F0FA542D957D1400E95E55 /* Alamofire in Frameworks */ = {isa = PBXBuildFile; productRef = 80F0FA532D957D1400E95E55 /* Alamofire */; };
 /* End PBXBuildFile section */
@@ -64,6 +65,7 @@
 				80F0FA542D957D1400E95E55 /* Alamofire in Frameworks */,
 				8026CE032DC758BE0090D1F0 /* Kingfisher in Frameworks */,
 				8026CE092DC773F30090D1F0 /* GoogleMaps in Frameworks */,
+				80DC147A2DCC8FAF00404AB4 /* MessageKit in Frameworks */,
 				804CF0382D9565EB0050AE28 /* GoogleSignIn in Frameworks */,
 				8026CE062DC773C40090D1F0 /* GooglePlaces in Frameworks */,
 				80F0FA4E2D956F1D00E95E55 /* SnapKit in Frameworks */,
@@ -124,6 +126,7 @@
 				8026CE022DC758BE0090D1F0 /* Kingfisher */,
 				8026CE052DC773C40090D1F0 /* GooglePlaces */,
 				8026CE082DC773F30090D1F0 /* GoogleMaps */,
+				80DC14792DCC8FAF00404AB4 /* MessageKit */,
 			);
 			productName = SeoulMate;
 			productReference = 804CEFB12D9564740050AE28 /* SeoulMate.app */;
@@ -187,6 +190,7 @@
 				8026CE012DC758BE0090D1F0 /* XCRemoteSwiftPackageReference "Kingfisher" */,
 				8026CE042DC773C40090D1F0 /* XCRemoteSwiftPackageReference "ios-places-sdk" */,
 				8026CE072DC773F30090D1F0 /* XCRemoteSwiftPackageReference "ios-maps-sdk" */,
+				80DC14782DCC8FAF00404AB4 /* XCRemoteSwiftPackageReference "MessageKit" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 804CEFB22D9564740050AE28 /* Products */;
@@ -548,6 +552,14 @@
 				minimumVersion = 8.0.0;
 			};
 		};
+		80DC14782DCC8FAF00404AB4 /* XCRemoteSwiftPackageReference "MessageKit" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/MessageKit/MessageKit.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 5.0.0;
+			};
+		};
 		80F0FA4C2D956F1D00E95E55 /* XCRemoteSwiftPackageReference "SnapKit" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/SnapKit/SnapKit.git";
@@ -586,6 +598,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 804CF0362D9565EB0050AE28 /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */;
 			productName = GoogleSignIn;
+		};
+		80DC14792DCC8FAF00404AB4 /* MessageKit */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 80DC14782DCC8FAF00404AB4 /* XCRemoteSwiftPackageReference "MessageKit" */;
+			productName = MessageKit;
 		};
 		80F0FA4D2D956F1D00E95E55 /* SnapKit */ = {
 			isa = XCSwiftPackageProductDependency;

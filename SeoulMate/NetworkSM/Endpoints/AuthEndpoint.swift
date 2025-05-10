@@ -9,7 +9,7 @@ import Foundation
 import Alamofire
 
 enum AuthEndpoint: Endpoint {
-  case login(authorizationCode: String)
+  case login(idToken: String)
   case refreshToken(refreshToken: String, accessToken: String)
   
   var path: String {
@@ -30,8 +30,10 @@ enum AuthEndpoint: Endpoint {
   
   var parameters: Parameters? {
     switch self {
-    case .login(let authorizationCode):
-      return ["authorizationCode": authorizationCode]
+    case .login(let idToken):
+      return [
+        "idToken": idToken
+      ]
       
     case .refreshToken(let refreshToken, let accessToken):
       return [

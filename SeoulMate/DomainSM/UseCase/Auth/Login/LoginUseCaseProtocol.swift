@@ -9,5 +9,5 @@ import Foundation
 import Combine
 
 protocol LoginUseCaseProtocol {
-  func execute(authorizationCode: String) -> AnyPublisher<LoginResponse, NetworkError>
+  func execute(idToken: String) -> AnyPublisher<LoginResponse, NetworkError>
 }

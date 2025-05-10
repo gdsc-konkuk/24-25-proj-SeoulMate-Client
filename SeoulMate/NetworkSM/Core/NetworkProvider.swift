@@ -16,6 +16,7 @@ protocol NetworkProviderProtocol {
 
 final class NetworkProvider: NetworkProviderProtocol {
   private let session: Session
+  private var cancellables: Set<AnyCancellable> = []
   
   init(interceptor: RequestInterceptor? = NetworkInterceptor(),
        eventMonitors: [EventMonitor] = [NetworkLogger()]) {
@@ -32,35 +33,49 @@ final class NetworkProvider: NetworkProviderProtocol {
   }
   
   func request<T: Decodable>(_ endpoint: Endpoint) -> AnyPublisher<T, NetworkError> {
-    let urlRequest: URLRequest
-    
-    do {
-      urlRequest = try endpoint.asURLRequest()
-    } catch {
-      return Fail(error: NetworkError.invalidURL).eraseToAnyPublisher()
+    return Future<T, NetworkError> { promise in
+      do {
+        let urlRequest = try endpoint.asURLRequest()
+        print("🔍 Created URLRequest: \(urlRequest.httpMethod ?? "unknown") \(urlRequest.url?.absoluteString ?? "")")
+        print("🔍 Request Headers: \(urlRequest.allHTTPHeaderFields ?? [:])")
+        print("🔍 Request Body: \(String(data: urlRequest.httpBody ?? Data(), encoding: .utf8) ?? "none")")
+        
+        self.session.request(urlRequest)
+          .validate()
+          .publishDecodable(type: T.self)
+          .tryMap { response in
+            if let error = response.error {
+              throw self.handleError(error, response: response.response)
+            }
+            
+            guard let value = response.value else {
+              throw NetworkError.invalidData
+            }
+            
+            return value
+          }
+          .mapError { error in
+            if let networkError = error as? NetworkError {
+              return networkError
+            }
+            return NetworkError.unknown(error)
+          }
+          .sink(
+            receiveCompletion: { completion in
+              if case .failure(let error) = completion {
+                promise(.failure(error))
+              }
+            },
+            receiveValue: { value in
+              promise(.success(value))
+            }
+          )
+          .store(in: &self.cancellables)
+      } catch {
+        promise(.failure(.invalidURL))
+      }
     }
-    
-    return session.request(urlRequest)
-      .validate()
-      .publishDecodable(type: T.self)
-      .tryMap { response in
-        if let error = response.error {
-          throw self.handleError(error, response: response.response)
-        }
-        
-        guard let value = response.value else {
-          throw NetworkError.invalidData
-        }
-        
-        return value
-      }
-      .mapError { error in
-        if let networkError = error as? NetworkError {
-          return networkError
-        }
-        return NetworkError.unknown(error)
-      }
-      .eraseToAnyPublisher()
+    .eraseToAnyPublisher()
   }
   
   private func handleError(_ error: Error, response: HTTPURLResponse?) -> NetworkError {

@@ -5,16 +5,25 @@
 	<key>CFBundleURLTypes</key>
 	<array>
 		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
 			<key>CFBundleURLSchemes</key>
 			<array>
-				<string>com.googleusercontent.apps.$(GOOGLE_CLIENT_ID)</string>
+				<string>com.googleusercontent.apps.$(GOOGLE_LOGIN_CLIENT_ID)</string>
 			</array>
 		</dict>
 	</array>
 	<key>GIDClientID</key>
-	<string>$(GOOGLE_CLIENT_ID).apps.googleusercontent.com</string>
+	<string>$(GOOGLE_LOGIN_CLIENT_ID)</string>
+	<key>GOOGLE_LOGIN_CLIENT_ID</key>
+	<string>$(GOOGLE_LOGIN_CLIENT_ID)</string>
 	<key>GOOGLE_MAP_API_KEY</key>
 	<string>$(GOOGLE_MAP_API_KEY)</string>
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<key>NSAllowsArbitraryLoads</key>
+		<true/>
+	</dict>
 	<key>PRODUCT_BUNDLE_IDENTIFIER</key>
 	<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
 	<key>UIAppFonts</key>

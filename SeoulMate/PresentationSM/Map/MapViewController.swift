@@ -502,7 +502,7 @@ extension MapViewController {
       
       let placeLocation = CLLocation(latitude: coordinate.latitude, longitude: coordinate.longitude)
       let userLocation = CLLocation(latitude: currentLocation.latitude, longitude: currentLocation.longitude)
-      let distance = userLocation.distance(from: placeLocation) / 1000
+      let distance = userLocation.distance(from: placeLocation)
       
       return PlaceCardInfo(
         placeID: place.id,
@@ -523,8 +523,28 @@ extension MapViewController {
     currentPlaces = allPlaces
     placeCardsContainer.configure(with: allPlaces)
     
-    // TODO: 추천 장소 마커 추가
-    // addRecommendedMarkers(places)
+    // 추천 장소 마커 추가
+    addRecommendedMarkers(places)
+  }
+  
+  private func addRecommendedMarkers(_ places: [PlaceResponse]) {
+    // 기존 마커 제거
+    currentMarkers.forEach { $0.map = nil }
+    currentMarkers.removeAll()
+    
+    // 새로운 마커 추가
+    for place in places {
+      let coordinate = CLLocationCoordinate2D(
+        latitude: place.coordinate.latitude,
+        longitude: place.coordinate.longitude
+      )
+      
+      let marker = GMSMarker(position: coordinate)
+      marker.title = place.id
+      marker.snippet = place.description
+      marker.map = mapView
+      currentMarkers.append(marker)
+    }
   }
   
   private func moveMapToLocation(coordinate: CLLocationCoordinate2D) {

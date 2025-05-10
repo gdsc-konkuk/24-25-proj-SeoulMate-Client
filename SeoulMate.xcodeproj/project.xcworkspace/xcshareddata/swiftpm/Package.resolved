@@ -1,5 +1,5 @@
 {
-  "originHash" : "a52cbaff1019f835f43f3731458543d1523e4a6b0795e8dde20e90354a0d8530",
+  "originHash" : "c4d6ac1157bf26808246d76dc74dcac37a1ab857c8601beb78f1197065dda102",
   "pins" : [
     {
       "identity" : "alamofire",
@@ -65,6 +65,15 @@
       }
     },
     {
+      "identity" : "inputbaraccessoryview",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/nathantannar4/InputBarAccessoryView",
+      "state" : {
+        "revision" : "dfdc822b0d4a0d1b5777100347c399069e9bfc62",
+        "version" : "7.0.0"
+      }
+    },
+    {
       "identity" : "ios-maps-sdk",
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/googlemaps/ios-maps-sdk",
@@ -89,6 +98,15 @@
       "state" : {
         "revision" : "7deda23bbdca612076c5c315003d8638a08ed0f1",
         "version" : "8.3.2"
+      }
+    },
+    {
+      "identity" : "messagekit",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/MessageKit/MessageKit.git",
+      "state" : {
+        "revision" : "dc48356f830d40de5acc0e126a44257d0a1329b6",
+        "version" : "5.0.0"
       }
     },
     {

@@ -140,7 +140,7 @@ extension SocialLoginViewController {
         print("ID Token: \(idToken)")  // 디버깅을 위해 ID 토큰 출력
         
         // UseCase를 통한 백엔드 로그인
-        self.loginUseCase.execute(authorizationCode: idToken)
+        self.loginUseCase.execute(idToken: idToken)
           .receive(on: DispatchQueue.main)
           .sink { completion in
             switch completion {

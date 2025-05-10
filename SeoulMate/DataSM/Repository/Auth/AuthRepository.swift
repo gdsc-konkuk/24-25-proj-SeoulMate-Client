@@ -15,8 +15,8 @@ final class AuthRepository: AuthRepositoryProtocol {
     self.authService = authService
   }
   
-  func login(authorizationCode: String) -> AnyPublisher<LoginResponse, NetworkError> {
-    return authService.login(authorizationCode: authorizationCode)
+  func login(idToken: String) -> AnyPublisher<LoginResponse, NetworkError> {
+    return authService.login(idToken: idToken)
   }
   
   func refreshToken(refreshToken: String, accessToken: String) -> AnyPublisher<RefreshTokenResponse, NetworkError> {
