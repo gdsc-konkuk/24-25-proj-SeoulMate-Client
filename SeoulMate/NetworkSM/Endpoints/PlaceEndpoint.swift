@@ -10,14 +10,17 @@ import Alamofire
 
 enum PlaceEndpoint: Endpoint {
   case getRecommendedPlaces(x: Double, y: Double)
-  case generatePrompt(placeId: String, purposes: [String])
+  case getLikedPlaces
+  case updateLikeStatus(placeId: String, like: Bool)
   
   var path: String {
     switch self {
     case .getRecommendedPlaces:
       return "/places"
-    case .generatePrompt(let placeId, _):
-      return "/places/\(placeId)"
+    case .getLikedPlaces:
+      return "/users/me/likes"
+    case .updateLikeStatus:
+      return "/users/me/likes"
     }
   }
   
@@ -25,7 +28,9 @@ enum PlaceEndpoint: Endpoint {
     switch self {
     case .getRecommendedPlaces:
       return .get
-    case .generatePrompt:
+    case .getLikedPlaces:
+      return .get
+    case .updateLikeStatus:
       return .post
     }
   }
@@ -37,10 +42,12 @@ enum PlaceEndpoint: Endpoint {
         "x": x,
         "y": y
       ]
-      
-    case .generatePrompt(_, let purposes):
+    case .getLikedPlaces:
+      return nil
+    case .updateLikeStatus(let placeId, let like):
       return [
-        "purposes": purposes
+        "placeId": placeId,
+        "like": like
       ]
     }
   }

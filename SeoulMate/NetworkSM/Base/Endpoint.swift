@@ -51,7 +51,6 @@ extension Endpoint {
     }
   }
   
-  // URLRequestConvertible 구현
   func asURLRequest() throws -> URLRequest {
     let url = try baseURL.asURL().appendingPathComponent(path)
     var request = try URLRequest(url: url, method: method)

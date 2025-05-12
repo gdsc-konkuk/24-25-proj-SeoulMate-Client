@@ -43,3 +43,7 @@ struct PlacePromptRequest: Encodable {
 struct PlacePromptResponse: Decodable {
   let prompts: String
 }
+
+struct LikedPlacesResponse: Decodable {
+  let placeIds: [String]
+}

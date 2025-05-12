@@ -7,9 +7,11 @@
 
 import UIKit
 import SnapKit
+import Combine
 
 protocol PlaceDetailViewControllerDelegate: AnyObject {
   func placeDetailViewController(_ controller: PlaceDetailViewController, didDismissWith placeInfo: PlaceCardInfo?)
+  func placeDetailViewController(_ controller: PlaceDetailViewController, didChangeLikeStatus placeId: String, isLiked: Bool)
 }
 
 final class PlaceDetailViewController: UIViewController {
@@ -17,6 +19,19 @@ final class PlaceDetailViewController: UIViewController {
   let detailView = PlaceDetailView()
   private var placeInfo: PlaceCardInfo?
   private var isDismissedByAskToBot = false
+  private let updateLikeStatusUseCase: UpdateLikeStatusUseCaseProtocol
+  private var cancellables = Set<AnyCancellable>()
+  private var isLiked: Bool = false
+  
+  init(placeId: String, updateLikeStatusUseCase: UpdateLikeStatusUseCaseProtocol, isLiked: Bool = false) {
+    self.updateLikeStatusUseCase = updateLikeStatusUseCase
+    self.isLiked = isLiked
+    super.init(nibName: nil, bundle: nil)
+  }
+  
+  required init?(coder: NSCoder) {
+    fatalError("init(coder:) has not been implemented")
+  }
   
   override func viewDidLoad() {
     super.viewDidLoad()
@@ -42,6 +57,7 @@ final class PlaceDetailViewController: UIViewController {
     }
     
     detailView.delegate = self
+    detailView.likeButton.addTarget(self, action: #selector(likeButtonTapped), for: .touchUpInside)
   }
   
   private func setupDismissGesture() {
@@ -57,9 +73,37 @@ final class PlaceDetailViewController: UIViewController {
     }
   }
   
+  @objc private func likeButtonTapped() {
+    guard let placeInfo = placeInfo else { return }
+    let newLikeStatus = !detailView.likeButton.isSelected
+    updateLikeStatusUseCase.execute(placeId: placeInfo.placeID ?? "", like: newLikeStatus)
+      .receive(on: DispatchQueue.main)
+      .sink { [weak self] completion in
+        switch completion {
+        case .finished:
+          break
+        case .failure(let error):
+          self?.showErrorAlert(message: error.localizedDescription)
+        }
+      } receiveValue: { [weak self] _ in
+        self?.detailView.likeButton.isSelected = newLikeStatus
+        if let placeId = placeInfo.placeID {
+          self?.delegate?.placeDetailViewController(self!, didChangeLikeStatus: placeId, isLiked: newLikeStatus)
+        }
+      }
+      .store(in: &cancellables)
+  }
+  
+  private func showErrorAlert(message: String) {
+    let alert = UIAlertController(title: "오류", message: message, preferredStyle: .alert)
+    alert.addAction(UIAlertAction(title: "확인", style: .default))
+    present(alert, animated: true)
+  }
+  
   func configure(with placeInfo: PlaceCardInfo, purposes: [String]) {
     self.placeInfo = placeInfo
     detailView.configure(with: placeInfo, purposes: purposes)
+    detailView.likeButton.isSelected = isLiked
   }
 }
 
@@ -80,7 +124,7 @@ extension PlaceDetailViewController: PlaceDetailViewDelegate {
       break
     case .backgroundTap:
       isDismissedByAskToBot = false
-    dismiss(animated: false)
+      dismiss(animated: false)
     }
   }
 }

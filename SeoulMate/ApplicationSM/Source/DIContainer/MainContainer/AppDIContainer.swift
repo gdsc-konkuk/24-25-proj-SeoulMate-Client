@@ -32,6 +32,10 @@ final class AppDIContainer {
     return PlaceService(networkProvider: networkProvider)
   }()
   
+  lazy var chatService: ChatServiceProtocol = {
+    return ChatService(networkProvider: networkProvider)
+  }()
+  
   // TODO: AIChatService will be implemented later
   
   // MARK: - Repositories
@@ -52,7 +56,7 @@ final class AppDIContainer {
   }()
   
   lazy var chatRepository: ChatRepositoryProtocol = {
-    return ChatRepository(coreDataStack: CoreDataStack.shared)
+    return ChatRepository(chatService: chatService)
   }()
   
   // MARK: - Use Cases
@@ -83,8 +87,12 @@ final class AppDIContainer {
     return GetRecommendedPlacesUseCase(placeRepository: placeRepository)
   }()
   
-  lazy var generatePlacePromptUseCase: GeneratePlacePromptUseCaseProtocol = {
-    return GeneratePlacePromptUseCase(placeRepository: placeRepository)
+  lazy var getLikedPlacesUseCase: GetLikedPlacesUseCaseProtocol = {
+    return GetLikedPlacesUseCase(placeRepository: placeRepository)
+  }()
+  
+  lazy var updateLikeStatusUseCase: UpdateLikeStatusUseCaseProtocol = {
+    return UpdateLikeStatusUseCase(placeRepository: placeRepository)
   }()
   
   // Chat Use Cases
@@ -112,78 +120,5 @@ final class AppDIContainer {
   // MARK: - TabBar
   func makeTabBarController() -> TabBarController {
     return TabBarController(appDIContainer: self)
-  }
-}
-
-final class LoginSceneDIContainer {
-  private let appDIContainer: AppDIContainer
-  
-  init(appDIContainer: AppDIContainer) {
-    self.appDIContainer = appDIContainer
-  }
-  
-  func makeSocialLoginViewController() -> SocialLoginViewController {
-    return SocialLoginViewController(
-      loginUseCase: appDIContainer.loginUseCase
-    )
-  }
-  
-  func makeTravelWithViewController() -> TravelWithViewController {
-    return TravelWithViewController()
-  }
-  
-  func makeTravelPurposeViewController(travelCompanion: String) -> TravelPurposeViewController {
-    return TravelPurposeViewController(
-      travelCompanion: travelCompanion,
-      updateUserProfileUseCase: appDIContainer.updateUserProfileUseCase
-    )
-  }
-}
-
-final class MapSceneDIContainer {
-  private let appDIContainer: AppDIContainer
-  
-  init(appDIContainer: AppDIContainer) {
-    self.appDIContainer = appDIContainer
-  }
-  
-  func makeMapViewController() -> MapViewController {
-    return MapViewController(
-      appDIContainer: appDIContainer,  // AppDIContainer 전달
-      getRecommendedPlacesUseCase: appDIContainer.getRecommendedPlacesUseCase,
-      generatePlacePromptUseCase: appDIContainer.generatePlacePromptUseCase,
-      getUserProfileUseCase: appDIContainer.getUserProfileUseCase
-    )
-  }
-  
-  func makeFilterViewController() -> FilterViewController {
-    return FilterViewController(
-      getUserProfileUseCase: appDIContainer.getUserProfileUseCase,
-      updateUserProfileUseCase: appDIContainer.updateUserProfileUseCase
-    )
-  }
-}
-
-final class MyPageSceneDIContainer {
-  private let appDIContainer: AppDIContainer
-  
-  init(appDIContainer: AppDIContainer) {
-    self.appDIContainer = appDIContainer
-  }
-  
-  func makeMyPageViewController() -> MyPageViewController {
-    return MyPageViewController()
-  }
-}
-
-final class AIChatSceneDIContainer {
-  private let appDIContainer: AppDIContainer
-  
-  init(appDIContainer: AppDIContainer) {
-    self.appDIContainer = appDIContainer
-  }
-  
-  func makeAIChatViewController() -> AIChatViewController {
-    return AIChatViewController(useCase: appDIContainer.chatUseCase)
   }
 }

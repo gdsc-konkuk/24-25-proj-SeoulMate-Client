@@ -22,31 +22,18 @@ final class UserService: UserServiceProtocol {
   }
   
   func getProfile() -> AnyPublisher<UserProfileResponse, NetworkError> {
-    // TODO: 더미 프로필 응답 반환
-    let dummyProfile = UserProfileResponse(
-        userName: "Test User",
-        birthYear: "1995",
-        companion: "Alone",
-        purposes: ["Activities", "Nature"]
-    )
-    
-    return Just(dummyProfile)
-        .setFailureType(to: NetworkError.self)
-        .eraseToAnyPublisher()
-    
-//    let endpoint = UserEndpoint.getProfile
-//    return networkProvider.request(endpoint)
+    let endpoint = UserEndpoint.getProfile
+    return networkProvider.request(endpoint)
   }
   
   func updateProfile(userName: String, birthYear: String, companion: String, purposes: [String]) -> AnyPublisher<Void, NetworkError> {
     let endpoint = UserEndpoint.updateProfile(
-      userName: userName,
+      name: userName,
       birthYear: birthYear,
       companion: companion,
-      purposes: purposes
+      purpose: purposes
     )
     
-    // API가 response body가 없으면, Empty 타입 사용
     return networkProvider.request(endpoint)
       .map { (_: EmptyResponse) in () }
       .eraseToAnyPublisher()

@@ -32,8 +32,8 @@
                         <constraint firstAttribute="height" constant="111" id="maT-1P-76D"/>
                     </constraints>
                 </imageView>
-                <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" usesAttributedText="YES" lineBreakMode="tailTruncation" numberOfLines="0" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="W9I-jz-axM">
-                    <rect key="frame" x="127.00000000000001" y="16" width="134.33333333333337" height="21"/>
+                <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" usesAttributedText="YES" lineBreakMode="wordWrap" numberOfLines="0" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="W9I-jz-axM">
+                    <rect key="frame" x="127" y="16" width="188" height="21"/>
                     <attributedString key="attributedText">
                         <fragment content="Gyeongbokgung">
                             <attributes>
@@ -45,7 +45,7 @@
                     </attributedString>
                     <nil key="highlightedColor"/>
                 </label>
-                <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" usesAttributedText="YES" lineBreakMode="tailTruncation" numberOfLines="0" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="RRc-QH-eJd">
+                <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" usesAttributedText="YES" lineBreakMode="wordWrap" numberOfLines="0" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="RRc-QH-eJd">
                     <rect key="frame" x="127" y="41" width="188" height="14"/>
                     <attributedString key="attributedText">
                         <fragment content="161, Sajik-ro, Jongno-gu, Seoul">
@@ -123,6 +123,7 @@
                 <constraint firstItem="JbE-3D-Re2" firstAttribute="top" secondItem="iN0-l3-epB" secondAttribute="top" constant="16" id="ghD-E7-GzR"/>
                 <constraint firstItem="W9I-jz-axM" firstAttribute="top" secondItem="iN0-l3-epB" secondAttribute="top" constant="16" id="oHS-cu-VtU"/>
                 <constraint firstItem="W9I-jz-axM" firstAttribute="leading" secondItem="JbE-3D-Re2" secondAttribute="trailing" constant="12" id="trU-c9-x5Y"/>
+                <constraint firstAttribute="trailing" secondItem="W9I-jz-axM" secondAttribute="trailing" constant="12" id="uIH-ec-bbA"/>
                 <constraint firstAttribute="bottom" secondItem="JbE-3D-Re2" secondAttribute="bottom" constant="16" id="wz6-QF-o2L"/>
             </constraints>
             <freeformSimulatedSizeMetrics key="simulatedDestinationMetrics"/>

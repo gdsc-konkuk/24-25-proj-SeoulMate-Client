@@ -10,7 +10,8 @@ import Combine
 
 protocol PlaceServiceProtocol {
   func getRecommendedPlaces(x: Double, y: Double) -> AnyPublisher<RecommendedPlacesResponse, NetworkError>
-  func generatePrompt(placeId: String, purposes: [String]) -> AnyPublisher<PlacePromptResponse, NetworkError>
+  func getLikedPlaces() -> AnyPublisher<LikedPlacesResponse, NetworkError>
+  func updateLikeStatus(placeId: String, like: Bool) -> AnyPublisher<EmptyResponse, NetworkError>
 }
 
 final class PlaceService: PlaceServiceProtocol {
@@ -25,8 +26,13 @@ final class PlaceService: PlaceServiceProtocol {
     return networkProvider.request(endpoint)
   }
   
-  func generatePrompt(placeId: String, purposes: [String]) -> AnyPublisher<PlacePromptResponse, NetworkError> {
-    let endpoint = PlaceEndpoint.generatePrompt(placeId: placeId, purposes: purposes)
+  func getLikedPlaces() -> AnyPublisher<LikedPlacesResponse, NetworkError> {
+    let endpoint = PlaceEndpoint.getLikedPlaces
+    return networkProvider.request(endpoint)
+  }
+  
+  func updateLikeStatus(placeId: String, like: Bool) -> AnyPublisher<EmptyResponse, NetworkError> {
+    let endpoint = PlaceEndpoint.updateLikeStatus(placeId: placeId, like: like)
     return networkProvider.request(endpoint)
   }
 }

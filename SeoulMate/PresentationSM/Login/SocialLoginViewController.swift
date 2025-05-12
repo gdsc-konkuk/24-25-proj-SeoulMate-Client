@@ -17,29 +17,42 @@ final class SocialLoginViewController: UIViewController {
   private var cancellables = Set<AnyCancellable>()
   
   // MARK: - UI Properties
+  private let titleImage: UIImageView = {
+    let image = UIImageView()
+    image.image = UIImage(named: "Union")
+    return image
+  }()
+  
   private let titleLabel: UILabel = {
     let label = UILabel()
     label.text = "SeoulMate"
-    label.font = .boldFont(ofSize: 36)
-    label.textColor = .black
+    label.font = .boldFont(ofSize: 40)
+    label.textColor = .main500
     label.textAlignment = .center
     return label
   }()
   
   private let subtitleLabel: UILabel = {
     let label = UILabel()
-    label.text = "서울 여행의 완벽한 파트너"
+    label.text = "Seoul's soulmate"
     label.font = .mediumFont(ofSize: 18)
     label.textColor = .darkGray
     label.textAlignment = .center
     return label
   }()
+
+  private let buttonLabel: UILabel = {
+    let label = UILabel()
+    label.text = "Get started!"
+    label.font = .mediumFont(ofSize: 18)
+    label.textColor = .gray400
+    label.textAlignment = .center
+    return label
+  }()
   
   // google login button
-  private let googleSignInButton: GIDSignInButton = {
-    let button = GIDSignInButton()
-    button.style = .wide
-    button.colorScheme = .light
+  private let googleSignInButton: GoogleSignInButton = {
+    let button = GoogleSignInButton()
     return button
   }()
   
@@ -73,13 +86,22 @@ extension SocialLoginViewController {
   private func setupUI() {
     view.backgroundColor = .white
     
+    view.addSubview(titleImage)
     view.addSubview(titleLabel)
     view.addSubview(subtitleLabel)
+    view.addSubview(buttonLabel)
     view.addSubview(googleSignInButton)
     view.addSubview(activityIndicator)
     
+    titleImage.snp.makeConstraints { make in
+      make.top.equalToSuperview().offset(UIApplication.screenHeight * 0.25)
+      make.centerX.equalToSuperview()
+      make.width.equalTo(90)
+      make.height.equalTo(120)
+    }
+    
     titleLabel.snp.makeConstraints { make in
-      make.top.equalToSuperview().offset(UIApplication.screenHeight * 0.3)
+      make.top.equalTo(titleImage.snp.bottom).offset(6)
       make.centerX.equalToSuperview()
     }
     
@@ -88,10 +110,16 @@ extension SocialLoginViewController {
       make.centerX.equalToSuperview()
     }
     
+    buttonLabel.snp.makeConstraints { make in
+      make.bottom.equalTo(googleSignInButton.snp.top).offset(-16)
+      make.centerX.equalToSuperview()
+    }
+    
     googleSignInButton.snp.makeConstraints { make in
       make.bottom.equalToSuperview().offset(-UIApplication.screenHeight * 0.15)
-      make.centerX.equalToSuperview()
-      make.width.equalTo(UIApplication.screenWidth * 0.7)
+      make.left.equalToSuperview().offset(20)
+      make.right.equalToSuperview().offset(-20)
+      make.height.equalTo(56)
     }
     
     activityIndicator.snp.makeConstraints { make in

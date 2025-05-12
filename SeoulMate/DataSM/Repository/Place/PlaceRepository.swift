@@ -19,7 +19,11 @@ final class PlaceRepository: PlaceRepositoryProtocol {
     return placeService.getRecommendedPlaces(x: x, y: y)
   }
   
-  func generatePrompt(placeId: String, purposes: [String]) -> AnyPublisher<PlacePromptResponse, NetworkError> {
-    return placeService.generatePrompt(placeId: placeId, purposes: purposes)
+  func getLikedPlaces() -> AnyPublisher<LikedPlacesResponse, NetworkError> {
+    return placeService.getLikedPlaces()
+  }
+  
+  func updateLikeStatus(placeId: String, like: Bool) -> AnyPublisher<EmptyResponse, NetworkError> {
+    return placeService.updateLikeStatus(placeId: placeId, like: like)
   }
 }

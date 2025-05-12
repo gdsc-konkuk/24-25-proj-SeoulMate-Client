@@ -9,17 +9,17 @@ import Foundation
 
 // MARK: - User Models
 struct UserProfileResponse: Decodable {
-  let userName: String
+  let name: String
   let birthYear: String
   let companion: String
-  let purposes: [String]
+  let purpose: [String]?
 }
 
 struct UpdateProfileRequest: Encodable {
-  let userName: String
+  let name: String
   let birthYear: String
   let companion: String
-  let purposes: [String]
+  let purpose: [String]
 }
 
 struct UserHistoryResponse: Decodable {

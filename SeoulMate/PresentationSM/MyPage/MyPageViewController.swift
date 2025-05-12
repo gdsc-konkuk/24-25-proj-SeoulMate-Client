@@ -7,8 +7,18 @@
 
 import UIKit
 import SnapKit
+import GooglePlaces
+import Combine
+import GoogleSignIn
 
 final class MyPageViewController: UIViewController, UICollectionViewDataSource, UICollectionViewDelegateFlowLayout {
+  
+  // MARK: - Properties
+  private let appDIContainer: AppDIContainer
+  private let getLikedPlacesUseCase: GetLikedPlacesUseCaseProtocol
+  private var cancellables = Set<AnyCancellable>()
+  private var likedPlaces: [PlaceCardInfo] = []
+  private var placesClient = GMSPlacesClient.shared()
   
   // MARK: - UI Components
   // 프로필 섹션
@@ -116,12 +126,26 @@ final class MyPageViewController: UIViewController, UICollectionViewDataSource, 
   
   private let dummyImages: [String] = Array(repeating: "photo", count: 5)
   
+  // MARK: - Initializer
+  init(appDIContainer: AppDIContainer, getLikedPlacesUseCase: GetLikedPlacesUseCaseProtocol) {
+    self.appDIContainer = appDIContainer
+    self.getLikedPlacesUseCase = getLikedPlacesUseCase
+    super.init(nibName: nil, bundle: nil)
+  }
+  
+  required init?(coder: NSCoder) {
+    fatalError("init(coder:) has not been implemented")
+  }
+  
   // MARK: - Life Cycle
   override func viewDidLoad() {
     super.viewDidLoad()
     view.backgroundColor = .gray100
     setupNavigationBar()
     setupLayout()
+    fetchLikedPlaces()
+    updateUserProfile()
+    
     let safeAreaCover = UIView()
     safeAreaCover.backgroundColor = .white
     view.addSubview(safeAreaCover)
@@ -233,16 +257,110 @@ final class MyPageViewController: UIViewController, UICollectionViewDataSource, 
       make.height.equalTo(24)
       make.trailing.equalToSuperview().inset(20)
     }
+    
+    // 로그아웃 버튼 액션 추가
+    logoutButton.addTarget(self, action: #selector(logoutButtonTapped), for: .touchUpInside)
+  }
+  
+  // MARK: - Data Fetching
+  private func fetchLikedPlaces() {
+    getLikedPlacesUseCase.execute()
+      .receive(on: DispatchQueue.main)
+      .sink { completion in
+        switch completion {
+        case .finished:
+          break
+        case .failure(let error):
+          print("즐겨찾기 장소 가져오기 실패: \(error)")
+        }
+      } receiveValue: { [weak self] response in
+        self?.fetchPlaceDetails(for: response.placeIds)
+      }
+      .store(in: &cancellables)
+  }
+  
+  private func fetchPlaceDetails(for placeIds: [String]) {
+    let group = DispatchGroup()
+    var placeInfos: [PlaceCardInfo] = []
+    
+    for placeId in placeIds {
+      group.enter()
+      
+      placesClient.fetchPlace(
+        fromPlaceID: placeId,
+        placeFields: [.name, .placeID, .coordinate, .formattedAddress, .rating, .userRatingsTotal, .photos],
+        sessionToken: nil
+      ) { [weak self] (place, error) in
+        defer { group.leave() }
+        
+        guard let self = self,
+              let place = place,
+              error == nil else { return }
+        
+        // 현재 위치 가져오기 (여기서는 임의의 위치 사용)
+        let currentLocation = CLLocationCoordinate2D(latitude: 37.540693, longitude: 127.079361)
+        
+        // PlaceCardInfo 생성
+        let placeInfo = PlaceCardInfo.from(place: place, currentLocation: currentLocation)
+        placeInfos.append(placeInfo)
+      }
+    }
+    
+    group.notify(queue: .main) { [weak self] in
+      self?.likedPlaces = placeInfos
+      self?.collectionView.reloadData()
+    }
+  }
+  
+  // MARK: - User Profile
+  private func updateUserProfile() {
+    if let user = GIDSignIn.sharedInstance.currentUser {
+      // 이름 업데이트
+      nameLabel.text = user.profile?.name ?? "User"
+      
+      // 이메일 업데이트
+      emailLabel.text = user.profile?.email ?? "No email"
+      
+      // 프로필 이미지 업데이트
+      if let profileImageURL = user.profile?.imageURL(withDimension: 96) {
+        URLSession.shared.dataTask(with: profileImageURL) { [weak self] data, response, error in
+          guard let self = self,
+                let data = data,
+                let image = UIImage(data: data) else { return }
+          
+          DispatchQueue.main.async {
+            self.profileImageView.image = image
+          }
+        }.resume()
+      }
+    }
   }
   
   // MARK: - CollectionView DataSource & Delegate
   func collectionView(_ collectionView: UICollectionView, numberOfItemsInSection section: Int) -> Int {
-    return dummyImages.count
+    return likedPlaces.count
   }
   
   func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
     let cell = collectionView.dequeueReusableCell(withReuseIdentifier: "CollectionCell", for: indexPath) as! CollectionCell
-    cell.configure(imageName: dummyImages[indexPath.item])
+    let place = likedPlaces[indexPath.item]
+    
+    // 장소의 첫 번째 사진을 가져와서 표시
+    if let placeId = place.placeID {
+      placesClient.lookUpPhotos(forPlaceID: placeId) { [weak self] (photos, error) in
+        guard let self = self,
+              let photoMetadata = photos?.results.first else { return }
+        
+        self.placesClient.loadPlacePhoto(photoMetadata) { (photo, error) in
+          if let photo = photo {
+            DispatchQueue.main.async {
+              cell.configure(image: photo)
+            }
+          }
+        }
+      }
+    }
+    
     return cell
   }
   
@@ -252,7 +370,39 @@ final class MyPageViewController: UIViewController, UICollectionViewDataSource, 
   
   // MARK: - Actions
   @objc private func viewAllButtonTapped() {
-    let myCollectionVC = MyCollectionViewController()
+    let myCollectionVC = MyCollectionViewController(likedPlaces: likedPlaces)
     navigationController?.pushViewController(myCollectionVC, animated: true)
+  }
+  
+  @objc private func logoutButtonTapped() {
+    let alert = UIAlertController(
+      title: "로그아웃",
+      message: "정말 로그아웃 하시겠습니까?",
+      preferredStyle: .alert
+    )
+    
+    let cancelAction = UIAlertAction(title: "취소", style: .cancel)
+    let logoutAction = UIAlertAction(title: "로그아웃", style: .destructive) { [weak self] _ in
+      self?.performLogout()
+    }
+    
+    alert.addAction(cancelAction)
+    alert.addAction(logoutAction)
+    
+    present(alert, animated: true)
+  }
+  
+  private func performLogout() {
+    GIDSignIn.sharedInstance.signOut()
+    
+    // 로그인 화면으로 이동
+    if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+       let window = windowScene.windows.first {
+      let loginSceneDIContainer = appDIContainer.makeLoginSceneDIContainer()
+      let loginVC = loginSceneDIContainer.makeSocialLoginViewController()
+      let navController = UINavigationController(rootViewController: loginVC)
+      window.rootViewController = navController
+      window.makeKeyAndVisible()
+    }
   }
 }

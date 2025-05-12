@@ -1,37 +1,11 @@
 import UIKit
 import SnapKit
+import GooglePlaces
 
 final class MyCollectionViewController: UIViewController {
   // MARK: - Properties
-  private var savedPlaces: [PlaceCardInfo] = [
-    PlaceCardInfo(
-      placeID: "ChIJa4QRyMZQAGARiQ5BMMFjJm8",
-      name: "경복궁",
-      address: "161, Sajik-ro, Jongno-gu, Seoul",
-      distance: 1200,
-      rating: 4.8,
-      ratingCount: 1250,
-      description: "조선왕조 제일의 법궁"
-    ),
-    PlaceCardInfo(
-      placeID: "ChIJa4QRyMZQAGARiQ5BMMFjJm8",
-      name: "창덕궁",
-      address: "99, Yulgok-ro, Jongno-gu, Seoul",
-      distance: 2500,
-      rating: 4.7,
-      ratingCount: 980,
-      description: "조선왕조의 이궁"
-    ),
-    PlaceCardInfo(
-      placeID: "ChIJa4QRyMZQAGARiQ5BMMFjJm8",
-      name: "덕수궁",
-      address: "99, Sejong-daero, Jung-gu, Seoul",
-      distance: 3100,
-      rating: 4.6,
-      ratingCount: 750,
-      description: "조선왕조의 별궁"
-    )
-  ]
+  private var likedPlaces: [PlaceCardInfo] = []
+  private var placesClient = GMSPlacesClient.shared()
   
   // MARK: - UI Components
   private lazy var collectionView: UICollectionView = {
@@ -49,6 +23,16 @@ final class MyCollectionViewController: UIViewController {
     collectionView.register(MyCollectionCell.self, forCellWithReuseIdentifier: MyCollectionCell.identifier)
     return collectionView
   }()
+  
+  // MARK: - Initializer
+  init(likedPlaces: [PlaceCardInfo]) {
+    self.likedPlaces = likedPlaces
+    super.init(nibName: nil, bundle: nil)
+  }
+  
+  required init?(coder: NSCoder) {
+    fatalError("init(coder:) has not been implemented")
+  }
   
   // MARK: - Lifecycle
   override func viewDidLoad() {
@@ -74,7 +58,7 @@ final class MyCollectionViewController: UIViewController {
 // MARK: - UICollectionViewDataSource
 extension MyCollectionViewController: UICollectionViewDataSource {
   func collectionView(_ collectionView: UICollectionView, numberOfItemsInSection section: Int) -> Int {
-    return savedPlaces.count
+    return likedPlaces.count
   }
   
   func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
@@ -82,8 +66,37 @@ extension MyCollectionViewController: UICollectionViewDataSource {
       return UICollectionViewCell()
     }
     
-    let place = savedPlaces[indexPath.item]
+    let place = likedPlaces[indexPath.item]
     cell.configure(with: place)
+    
+    // Fetch and load images for the place
+    if let placeId = place.placeID {
+      placesClient.lookUpPhotos(forPlaceID: placeId) { [weak self] (photos, error) in
+        guard let self = self,
+              let photoMetadata = photos?.results else { return }
+        
+        // Load up to 5 photos
+        let photosToLoad = Array(photoMetadata.prefix(5))
+        var loadedPhotos: [UIImage] = []
+        
+        let group = DispatchGroup()
+        
+        for photo in photosToLoad {
+          group.enter()
+          self.placesClient.loadPlacePhoto(photo) { (photo, error) in
+            defer { group.leave() }
+            if let photo = photo {
+              loadedPhotos.append(photo)
+            }
+          }
+        }
+        
+        group.notify(queue: .main) {
+          cell.updatePhotos(loadedPhotos)
+        }
+      }
+    }
+    
     return cell
   }
 }

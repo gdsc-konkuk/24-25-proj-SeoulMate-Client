@@ -146,6 +146,7 @@ final class FilterViewController: UIViewController {
     setupBindings()
     setupStackViews()
     
+    // 프로필은 뷰가 처음 로드될 때만 가져옴
     loadUserProfile()
   }
   
@@ -298,16 +299,18 @@ final class FilterViewController: UIViewController {
   
   // 사용자 프로필 정보 로드
   private func loadUserProfile() {
+    print("🔍 loadUserProfile called")
     getUserProfileUseCase.execute()
       .receive(on: DispatchQueue.main)
       .sink { completion in
         switch completion {
         case .finished:
-          break
+          print("✅ Profile load finished")
         case .failure(let error):
-          print("Failed to load profile: \(error)")
+          print("❌ Failed to load profile: \(error)")
         }
       } receiveValue: { [weak self] profile in
+        print("📦 Received profile: \(profile)")
         self?.updateUIWithProfile(profile)
       }
       .store(in: &cancellables)
@@ -321,12 +324,14 @@ final class FilterViewController: UIViewController {
     }
     
     // purposes 복원
-    for purpose in profile.purposes {
-      if let purposeIndex = travelPurposes.firstIndex(of: purpose) {
-        purposeStackView.selectItem(at: purposeIndex)
+    if let purposes = profile.purpose {
+      for purpose in purposes {
+        if let purposeIndex = travelPurposes.firstIndex(of: purpose) {
+          purposeStackView.selectItem(at: purposeIndex)
+        }
       }
+      selectedPurposes = purposes
     }
-    selectedPurposes = profile.purposes
   }
   
   // MARK: - Action Methods
@@ -366,10 +371,11 @@ final class FilterViewController: UIViewController {
         
         // 프로필 업데이트
         return self.updateUserProfileUseCase.execute(
-          userName: profile.userName,
-          birthYear: profile.birthYear,
+          userName: profile.name,
+          // TODO: 일단 birthYear는 필요x -> 그냥 막 쏠 예정
+          birthYear: "2020-08-01",
           companion: filterData.companion ?? profile.companion,
-          purposes: filterData.purposes.isEmpty ? profile.purposes : filterData.purposes
+          purposes: filterData.purposes.isEmpty ? (profile.purpose ?? []) : filterData.purposes
         )
       }
       .receive(on: DispatchQueue.main)

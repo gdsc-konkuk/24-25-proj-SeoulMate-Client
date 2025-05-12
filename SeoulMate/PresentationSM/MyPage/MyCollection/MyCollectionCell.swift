@@ -101,9 +101,10 @@ final class MyCollectionCell: UICollectionViewCell {
     nameLabel.text = placeInfo.name
     addressLabel.setText(placeInfo.address)
     setInfoLabel(distanceText: placeInfo.distanceText, ratingText: placeInfo.ratingText)
-    
-    // 최대 5개의 이미지로 제한
-    photos = Array(repeating: UIImage(systemName: "photo")!, count: 5)
+  }
+  
+  func updatePhotos(_ newPhotos: [UIImage]) {
+    self.photos = newPhotos
     imageCarousel.reloadData()
   }
   

@@ -10,5 +10,6 @@ import Combine
 
 protocol PlaceRepositoryProtocol {
   func getRecommendedPlaces(x: Double, y: Double) -> AnyPublisher<RecommendedPlacesResponse, NetworkError>
-  func generatePrompt(placeId: String, purposes: [String]) -> AnyPublisher<PlacePromptResponse, NetworkError>
+  func getLikedPlaces() -> AnyPublisher<LikedPlacesResponse, NetworkError>
+  func updateLikeStatus(placeId: String, like: Bool) -> AnyPublisher<EmptyResponse, NetworkError>
 }

@@ -20,7 +20,7 @@ final class FilterRepository: FilterRepositoryProtocol {
       .map { profile in
         return FilterData(
           companion: profile.companion,
-          purposes: profile.purposes,
+          purposes: profile.purpose ?? [],
           userId: nil
         )
       }
@@ -36,8 +36,8 @@ final class FilterRepository: FilterRepositoryProtocol {
         }
         
         return self.userService.updateProfile(
-          userName: profile.userName,
-          birthYear: profile.birthYear,
+          userName: profile.name,
+          birthYear: "2020-08-01",
           companion: data.companion ?? "",
           purposes: data.purposes
         )

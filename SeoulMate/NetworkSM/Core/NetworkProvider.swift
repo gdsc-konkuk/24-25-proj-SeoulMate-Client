@@ -14,6 +14,15 @@ protocol NetworkProviderProtocol {
   func request<T: Decodable>(_ endpoint: Endpoint) -> AnyPublisher<T, NetworkError>
 }
 
+final class EmptyResponseSerializer: ResponseSerializer {
+  func serialize(request: URLRequest?, response: HTTPURLResponse?, data: Data?, error: Error?) throws -> EmptyResponse {
+    if let error = error {
+      throw error
+    }
+    return EmptyResponse()
+  }
+}
+
 final class NetworkProvider: NetworkProviderProtocol {
   private let session: Session
   private var cancellables: Set<AnyCancellable> = []
@@ -42,35 +51,36 @@ final class NetworkProvider: NetworkProviderProtocol {
         
         self.session.request(urlRequest)
           .validate()
-          .publishDecodable(type: T.self)
-          .tryMap { response in
-            if let error = response.error {
-              throw self.handleError(error, response: response.response)
-            }
-            
-            guard let value = response.value else {
-              throw NetworkError.invalidData
-            }
-            
-            return value
-          }
-          .mapError { error in
-            if let networkError = error as? NetworkError {
-              return networkError
-            }
-            return NetworkError.unknown(error)
-          }
-          .sink(
-            receiveCompletion: { completion in
-              if case .failure(let error) = completion {
-                promise(.failure(error))
+          .response(responseSerializer: EmptyResponseSerializer()) { response in
+            switch response.result {
+            case .success(let value):
+              if T.self == EmptyResponse.self {
+                promise(.success(value as! T))
+              } else {
+                // EmptyResponse가 아닌 경우 일반 디코딩 시도
+                self.session.request(urlRequest)
+                  .validate()
+                  .responseDecodable(of: T.self) { response in
+                    switch response.result {
+                    case .success(let value):
+                      promise(.success(value))
+                    case .failure(let error):
+                      if let response = response.response {
+                        promise(.failure(self.handleError(error, response: response)))
+                      } else {
+                        promise(.failure(.unknown(error)))
               }
-            },
-            receiveValue: { value in
-              promise(.success(value))
+                    }
+                  }
+              }
+            case .failure(let error):
+              if let response = response.response {
+                promise(.failure(self.handleError(error, response: response)))
+              } else {
+                promise(.failure(.unknown(error)))
+              }
             }
-          )
-          .store(in: &self.cancellables)
+          }
       } catch {
         promise(.failure(.invalidURL))
       }

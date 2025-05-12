@@ -51,9 +51,10 @@ final class PlaceDetailView: UIView {
   
   private let pageControl = UIPageControl()
   
-  private let likeButton: UIButton = {
+  let likeButton: UIButton = {
     let button = UIButton(type: .custom)
     button.setImage(UIImage(systemName: "heart"), for: .normal)
+    button.setImage(UIImage(systemName: "heart.fill"), for: .selected)
     button.tintColor = .white
     button.backgroundColor = UIColor.black.withAlphaComponent(0.3)
     button.layer.cornerRadius = 18
@@ -69,7 +70,19 @@ final class PlaceDetailView: UIView {
   
   private let infoLabel = UILabel() // 거리/별점/리뷰수
   
-  private let descriptionLabel = UILabel()
+  private let descriptionTextView: UITextView = {
+    let tv = UITextView()
+    tv.isEditable = false
+    tv.isScrollEnabled = true
+    tv.showsVerticalScrollIndicator = true
+    tv.font = .regularFont(ofSize: 16)
+    tv.textColor = .black
+    tv.backgroundColor = .clear
+    tv.textContainerInset = .zero
+    tv.textContainer.lineFragmentPadding = 0
+    tv.isScrollEnabled = true
+    return tv
+  }()
   
   private let askToBotButton = CommonRectangleButton(
     title: "Ask to Bot",
@@ -96,11 +109,21 @@ final class PlaceDetailView: UIView {
     layer.cornerRadius = 20
     layer.masksToBounds = true
     
+    addSubview(imageCarousel)
+    addSubview(loadingIndicator)
+    addSubview(likeButton)
+    addSubview(pageControl)
+    addSubview(tagStackView)
+    addSubview(nameLabel)
+    addSubview(addressLabel)
+    addSubview(infoLabel)
+    addSubview(askToBotButton)
+    addSubview(descriptionTextView)
+    
     // 1. 이미지 캐러셀
     imageCarousel.delegate = self
     imageCarousel.dataSource = self
     imageCarousel.register(ImageCarouselCell.self, forCellWithReuseIdentifier: ImageCarouselCell.identifier)
-    addSubview(imageCarousel)
     imageCarousel.snp.makeConstraints { make in
       make.top.equalToSuperview().offset(16)
       make.left.equalToSuperview().offset(16)
@@ -109,13 +132,11 @@ final class PlaceDetailView: UIView {
     }
     
     // 로딩 인디케이터 추가
-    addSubview(loadingIndicator)
     loadingIndicator.snp.makeConstraints { make in
       make.center.equalTo(imageCarousel)
     }
     
     // 2. 좋아요 버튼
-    addSubview(likeButton)
     likeButton.snp.makeConstraints { make in
       make.top.equalTo(imageCarousel).offset(12)
       make.right.equalTo(imageCarousel).offset(-12)
@@ -123,38 +144,34 @@ final class PlaceDetailView: UIView {
     }
     
     // 3. 페이지 컨트롤
-    addSubview(pageControl)
     pageControl.snp.makeConstraints { make in
       make.centerX.equalTo(imageCarousel)
       make.bottom.equalTo(imageCarousel).offset(-8)
     }
     
     // 4. 태그 스택뷰
-    addSubview(tagStackView)
     tagStackView.normalBackgroundColor = .main100
     tagStackView.normalTextColor = .main500
     tagStackView.buttonFont = .mediumFont(ofSize: 12)
     tagStackView.buttonVerticalPadding = 4
     tagStackView.buttonHorizontalPadding = 8
     tagStackView.horizontalSpacing = 8
-    tagStackView.verticalSpacing = 12
-    tagStackView.buttonCornerRadius = 20
+    tagStackView.verticalSpacing = 8
+    tagStackView.buttonCornerRadius = 10
     tagStackView.snp.makeConstraints { make in
-      make.top.equalTo(imageCarousel.snp.bottom).offset(16)
+      make.top.equalTo(imageCarousel.snp.bottom).offset(10)
       make.left.equalToSuperview().offset(16)
       make.height.equalTo(40)
     }
     
     // 5. 장소명
     nameLabel.font = .boldFont(ofSize: 20)
-    addSubview(nameLabel)
     nameLabel.snp.makeConstraints { make in
       make.top.equalTo(tagStackView.snp.bottom).offset(8)
       make.left.equalToSuperview().offset(16)
     }
     
     // 6. 주소
-    addSubview(addressLabel)
     addressLabel.snp.makeConstraints { make in
       make.top.equalTo(nameLabel.snp.bottom).offset(4)
       make.left.equalToSuperview().offset(16)
@@ -164,25 +181,22 @@ final class PlaceDetailView: UIView {
     
     // 7. 거리/별점/리뷰수
     infoLabel.font = .mediumFont(ofSize: 14)
-    addSubview(infoLabel)
     infoLabel.snp.makeConstraints { make in
       make.top.equalTo(addressLabel.snp.bottom).offset(4)
       make.left.equalToSuperview().offset(16)
     }
     
     // 8. 설명
-    descriptionLabel.font = .regularFont(ofSize: 16)
-    descriptionLabel.numberOfLines = 0
-    addSubview(descriptionLabel)
-    descriptionLabel.snp.makeConstraints { make in
-      make.top.equalTo(infoLabel.snp.bottom).offset(8)
+    descriptionTextView.snp.makeConstraints { make in
+      make.top.equalTo(infoLabel.snp.bottom).offset(19)
       make.left.equalToSuperview().offset(16)
       make.right.equalToSuperview().offset(-16)
+      make.height.greaterThanOrEqualTo(100)
+      make.bottom.lessThanOrEqualTo(askToBotButton.snp.top).offset(-20)
     }
     
     // 9. Ask to Bot 버튼
     askToBotButton.addTarget(self, action: #selector(handleAskToBotButtonTap), for: .touchUpInside)
-    addSubview(askToBotButton)
     askToBotButton.snp.makeConstraints { make in
       make.left.equalToSuperview().offset(24)
       make.right.equalToSuperview().offset(-24)
@@ -209,8 +223,7 @@ final class PlaceDetailView: UIView {
     addressLabel.setFont(.regularFont(ofSize: 14))
     addressLabel.setTextColor(.gray)
     setInfoLabel(distanceText: placeInfo.distanceText, ratingText: placeInfo.ratingText)
-    descriptionLabel.text = "Gyeongbokgung is a former royal palace in Seoul, South Korea. It was the first royal palace of the Joseon dynasty, having been established in 1395."
-
+    descriptionTextView.text = placeInfo.description ?? "No description available"
     
     tagStackView.setItems(purposes)
     for button in tagStackView.buttons {

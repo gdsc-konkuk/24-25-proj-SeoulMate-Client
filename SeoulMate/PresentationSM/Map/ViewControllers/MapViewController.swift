@@ -17,8 +17,8 @@ final class MapViewController: UIViewController {
   // MARK: - Properties
   private let appDIContainer: AppDIContainer
   private let getRecommendedPlacesUseCase: GetRecommendedPlacesUseCaseProtocol
-  private let generatePlacePromptUseCase: GeneratePlacePromptUseCaseProtocol
   private let getUserProfileUseCase: GetUserProfileUseCaseProtocol
+  private let getLikedPlacesUseCase: GetLikedPlacesUseCaseProtocol
   private var cancellables = Set<AnyCancellable>()
   
   private let slideTransitioningDelegate = SlideTransitioningDelegate()
@@ -37,8 +37,45 @@ final class MapViewController: UIViewController {
     return view
   }()
   
+  private lazy var myLocationButton: UIButton = {
+    let button = UIButton(type: .system)
+    button.backgroundColor = .white
+    button.layer.cornerRadius = 24
+    button.layer.shadowColor = UIColor.black.cgColor
+    button.layer.shadowOffset = CGSize(width: 0, height: 2)
+    button.layer.shadowOpacity = 0.1
+    button.layer.shadowRadius = 4
+    
+    let config = UIImage.SymbolConfiguration(pointSize: 18, weight: .medium)
+    let locationImage = UIImage(systemName: "location.fill", withConfiguration: config)
+    button.setImage(locationImage, for: .normal)
+    button.tintColor = .main500
+    
+    button.addTarget(self, action: #selector(myLocationButtonTapped), for: .touchUpInside)
+    return button
+  }()
+  
+  private lazy var favoriteButton: UIButton = {
+    let button = UIButton(type: .system)
+    button.backgroundColor = .white
+    button.layer.cornerRadius = 24
+    button.layer.shadowColor = UIColor.black.cgColor
+    button.layer.shadowOffset = CGSize(width: 0, height: 2)
+    button.layer.shadowOpacity = 0.1
+    button.layer.shadowRadius = 4
+    
+    let config = UIImage.SymbolConfiguration(pointSize: 18, weight: .medium)
+    let heartImage = UIImage(systemName: "heart.fill", withConfiguration: config)
+    button.setImage(heartImage, for: .normal)
+    button.tintColor = .main500
+    
+    button.addTarget(self, action: #selector(favoriteButtonTapped), for: .touchUpInside)
+    return button
+  }()
+  
   private var currentPlaces: [PlaceCardInfo] = []
   private var currentMarkers: [GMSMarker] = []
+  var likedPlaceIds: Set<String> = []  // 좋아요한 장소 ID들을 저장할 Set
   
   // MARK: - UI Properties
   private let searchContainerView: UIView = {
@@ -103,13 +140,13 @@ final class MapViewController: UIViewController {
   init(
     appDIContainer: AppDIContainer,
     getRecommendedPlacesUseCase: GetRecommendedPlacesUseCaseProtocol,
-    generatePlacePromptUseCase: GeneratePlacePromptUseCaseProtocol,
-    getUserProfileUseCase: GetUserProfileUseCaseProtocol
+    getUserProfileUseCase: GetUserProfileUseCaseProtocol,
+    getLikedPlacesUseCase: GetLikedPlacesUseCaseProtocol
   ) {
     self.appDIContainer = appDIContainer
     self.getRecommendedPlacesUseCase = getRecommendedPlacesUseCase
-    self.generatePlacePromptUseCase = generatePlacePromptUseCase
     self.getUserProfileUseCase = getUserProfileUseCase
+    self.getLikedPlacesUseCase = getLikedPlacesUseCase
     super.init(nibName: nil, bundle: nil)
   }
   
@@ -127,6 +164,7 @@ final class MapViewController: UIViewController {
     setupMapView()
     setupPlacesAPI()
     setupMapTapGesture()
+    fetchLikedPlaces()  // 좋아요 목록 가져오기
   }
   
   override func viewWillAppear(_ animated: Bool) {
@@ -144,6 +182,8 @@ final class MapViewController: UIViewController {
     view.addSubview(filterButton)
     view.addSubview(resultsTableView)
     view.addSubview(placeCardsContainer)
+    view.addSubview(myLocationButton)
+    view.addSubview(favoriteButton)
     
     mapView.snp.makeConstraints { make in
       make.edges.equalToSuperview()
@@ -184,8 +224,20 @@ final class MapViewController: UIViewController {
     
     placeCardsContainer.snp.makeConstraints { make in
       make.leading.trailing.equalToSuperview()
-      make.bottom.equalTo(view.safeAreaLayoutGuide).offset(-16)
+      make.bottom.equalTo(view.safeAreaLayoutGuide).offset(-29)
       make.height.equalTo(220)
+    }
+    
+    myLocationButton.snp.makeConstraints { make in
+      make.trailing.equalToSuperview().offset(-24)
+      make.bottom.equalTo(view.safeAreaLayoutGuide).offset(-16)
+      make.width.height.equalTo(48)
+    }
+    
+    favoriteButton.snp.makeConstraints { make in
+      make.trailing.equalTo(myLocationButton)
+      make.bottom.equalTo(myLocationButton.snp.top).offset(-12)
+      make.width.height.equalTo(48)
     }
   }
   
@@ -205,7 +257,7 @@ final class MapViewController: UIViewController {
     )
     
     mapView.camera = camera
-    mapView.settings.myLocationButton = true
+    mapView.settings.myLocationButton = false  // 기본 내 위치 버튼 제거
     mapView.settings.compassButton = true
     mapView.delegate = self
   }
@@ -260,6 +312,23 @@ final class MapViewController: UIViewController {
       self.resultsTableView.isHidden = true
     }
   }
+  
+  private func fetchLikedPlaces() {
+    getLikedPlacesUseCase.execute()
+      .receive(on: DispatchQueue.main)
+      .sink { completion in
+        switch completion {
+        case .finished:
+          break
+        case .failure(let error):
+          print("즐겨찾기 장소 가져오기 실패: \(error)")
+        }
+      } receiveValue: { [weak self] response in
+        self?.likedPlaceIds = Set(response.placeIds)
+        print("초기 좋아요한 장소들: \(self?.likedPlaceIds ?? [])")
+      }
+      .store(in: &cancellables)
+  }
 }
 
 // MARK: - Action methods
@@ -299,6 +368,25 @@ extension MapViewController {
   }
   
   @objc private func filterButtonTapped() {
+    // 캐러셀이 보이는 상태라면 숨기고 버튼 위치 업데이트
+    if !placeCardsContainer.isHidden {
+      placeCardsContainer.hide(animated: true)
+      
+      UIView.animate(withDuration: 0.3) {
+        self.myLocationButton.snp.remakeConstraints { make in
+          make.trailing.equalToSuperview().offset(-24)
+          make.bottom.equalTo(self.view.safeAreaLayoutGuide).offset(-16)
+          make.width.height.equalTo(48)
+        }
+        self.favoriteButton.snp.remakeConstraints { make in
+          make.trailing.equalTo(self.myLocationButton)
+          make.bottom.equalTo(self.myLocationButton.snp.top).offset(-12)
+          make.width.height.equalTo(48)
+        }
+        self.view.layoutIfNeeded()
+      }
+    }
+    
     let mapSceneDIContainer = appDIContainer.makeMapSceneDIContainer()
     let filterVC = mapSceneDIContainer.makeFilterViewController()
     filterVC.delegate = self
@@ -307,6 +395,138 @@ extension MapViewController {
     filterVC.transitioningDelegate = slideTransitioningDelegate
     
     present(filterVC, animated: true)
+  }
+  
+  @objc private func myLocationButtonTapped() {
+    if let location = locationManager.location?.coordinate {
+      let camera = GMSCameraPosition.camera(withTarget: location, zoom: 15)
+      mapView.animate(to: camera)
+    }
+  }
+  
+  @objc private func favoriteButtonTapped() {
+    getLikedPlacesUseCase.execute()
+      .receive(on: DispatchQueue.main)
+      .sink { completion in
+        switch completion {
+        case .finished:
+          break
+        case .failure(let error):
+          print("즐겨찾기 장소 가져오기 실패: \(error)")
+        }
+      } receiveValue: { [weak self] response in
+        self?.handleLikedPlaces(response)
+      }
+      .store(in: &cancellables)
+  }
+  
+  private func handleLikedPlaces(_ response: LikedPlacesResponse) {
+    guard !response.placeIds.isEmpty else {
+      // 즐겨찾기한 장소가 없는 경우 알림 표시
+      let alert = UIAlertController(
+        title: "즐겨찾기",
+        message: "아직 즐겨찾기한 장소가 없습니다.",
+        preferredStyle: .alert
+      )
+      alert.addAction(UIAlertAction(title: "확인", style: .default))
+      present(alert, animated: true)
+      return
+    }
+    
+    // 기존 마커와 장소 정보 초기화
+    mapView.clear()
+    currentMarkers.removeAll()
+    currentPlaces.removeAll()
+    
+    // 여러 비동기 작업을 처리하기 위한 그룹 생성
+    let group = DispatchGroup()
+    var placeInfos: [PlaceCardInfo] = []
+    var markers: [GMSMarker] = []
+    
+    // 거리 계산을 위한 현재 위치 가져오기
+    let currentLocation = locationManager.location?.coordinate ?? initialLocation
+    
+    // 각 즐겨찾기 장소의 상세 정보 가져오기
+    for (index, placeId) in response.placeIds.enumerated() {
+      group.enter()
+      
+      placesClient.fetchPlace(
+        fromPlaceID: placeId,
+        placeFields: [.name, .placeID, .coordinate, .formattedAddress, .rating, .userRatingsTotal, .photos],
+        sessionToken: nil
+      ) { [weak self] (place, error) in
+        defer { group.leave() }
+        
+        guard let self = self,
+              let place = place,
+              error == nil else { return }
+        
+        // 장소 정보 생성
+        var placeInfo = PlaceCardInfo.from(place: place, currentLocation: currentLocation)
+        // 서버에서 받은 description으로 업데이트
+        placeInfo = PlaceCardInfo(
+          placeID: placeInfo.placeID,
+          name: placeInfo.name,
+          address: placeInfo.address,
+          distance: placeInfo.distance,
+          rating: placeInfo.rating,
+          ratingCount: placeInfo.ratingCount,
+          description: "TODO"
+        )
+        
+        // 마커 생성
+        let marker = GMSMarker(position: place.coordinate)
+        marker.title = place.name
+        marker.map = self.mapView
+        
+        // 배열에 추가 (순서 유지)
+        DispatchQueue.main.async {
+          while placeInfos.count <= index {
+            placeInfos.append(placeInfo)
+          }
+          while markers.count <= index {
+            markers.append(marker)
+          }
+          placeInfos[index] = placeInfo
+          markers[index] = marker
+        }
+      }
+    }
+    
+    // 모든 장소 정보를 가져온 후 UI 업데이트
+    group.notify(queue: .main) { [weak self] in
+      guard let self = self else { return }
+      
+      self.currentPlaces = placeInfos
+      self.currentMarkers = markers
+      
+      // 카드뷰 업데이트
+      self.placeCardsContainer.configure(with: self.currentPlaces)
+      self.placeCardsContainer.show(animated: true)
+      self.placeCardsContainer.scrollToIndex(0, animated: false)
+      
+      // 첫 번째 장소로 지도 이동
+      if let firstPlace = placeInfos.first,
+         let firstMarker = markers.first {
+        self.moveMapToLocation(coordinate: firstMarker.position)
+        self.mapView.selectedMarker = firstMarker
+      }
+      
+      // 버튼 위치 업데이트
+      UIView.animate(withDuration: 0.3) {
+        self.myLocationButton.snp.remakeConstraints { make in
+          make.trailing.equalToSuperview().offset(-24)
+          make.bottom.equalTo(self.placeCardsContainer.snp.top).offset(-16)
+          make.width.height.equalTo(48)
+        }
+        self.favoriteButton.snp.remakeConstraints { make in
+          make.trailing.equalTo(self.myLocationButton)
+          make.bottom.equalTo(self.myLocationButton.snp.top).offset(-12)
+          make.width.height.equalTo(48)
+        }
+        self.view.layoutIfNeeded()
+      }
+    }
   }
 }
 
@@ -462,6 +682,12 @@ extension MapViewController {
   }
   
   private func handleRecommendedPlaces(_ places: [RecommendedPlace], firstPlaceInfo: PlaceCardInfo) {
+    print("서버에서 받은 추천 장소 수: \(places.count)")
+    print("첫 번째 장소: \(firstPlaceInfo.name)")
+    for (index, place) in places.enumerated() {
+      print("추천 장소 \(index + 1): \(place.placeId)")
+    }
+    
     // 모든 장소 정보를 한번에 가져오기 위한 그룹
     let group = DispatchGroup()
     var recommendedPlaceInfos: [PlaceCardInfo] = []
@@ -486,7 +712,18 @@ extension MapViewController {
         let currentLocation = self.locationManager.location?.coordinate ?? self.initialLocation
         
         // PlaceCardInfo 생성
-        let placeInfo = PlaceCardInfo.from(place: googlePlace, currentLocation: currentLocation)
+        var description = place.description
+        var placeInfo = PlaceCardInfo.from(place: googlePlace, currentLocation: currentLocation)
+        // RecommendedPlace의 description으로 업데이트
+        placeInfo = PlaceCardInfo(
+          placeID: placeInfo.placeID,
+          name: placeInfo.name,
+          address: placeInfo.address,
+          distance: placeInfo.distance,
+          rating: placeInfo.rating,
+          ratingCount: placeInfo.ratingCount,
+          description: description
+        )
         
         // 마커 생성
         let marker = GMSMarker(position: googlePlace.coordinate)
@@ -514,8 +751,11 @@ extension MapViewController {
     group.notify(queue: .main) { [weak self] in
       guard let self = self else { return }
       
+      print("처리된 추천 장소 수: \(recommendedPlaceInfos.count)")
+      
       // 첫 번째 장소와 추천 장소들을 합침
       self.currentPlaces = [firstPlaceInfo] + recommendedPlaceInfos
+      print("최종 장소 수 (첫 번째 장소 + 추천 장소): \(self.currentPlaces.count)")
       
       // 첫 번째 마커가 있는 경우에만 추가
       if let firstMarker = self.currentMarkers.first {
@@ -528,6 +768,21 @@ extension MapViewController {
       self.placeCardsContainer.configure(with: self.currentPlaces)
       self.placeCardsContainer.show(animated: true)
       self.placeCardsContainer.scrollToIndex(0, animated: false)
+      
+      // 내 위치 버튼 위치 업데이트
+      UIView.animate(withDuration: 0.3) {
+        self.myLocationButton.snp.remakeConstraints { make in
+          make.trailing.equalToSuperview().offset(-24)
+          make.bottom.equalTo(self.placeCardsContainer.snp.top).offset(-16)
+          make.width.height.equalTo(48)
+        }
+        self.favoriteButton.snp.remakeConstraints { make in
+          make.trailing.equalTo(self.myLocationButton)
+          make.bottom.equalTo(self.myLocationButton.snp.top).offset(-12)
+          make.width.height.equalTo(48)
+        }
+        self.view.layoutIfNeeded()
+      }
     }
   }
   
@@ -592,12 +847,18 @@ extension MapViewController: PlaceCardsContainerDelegate {
       .sink { completion in
         // 에러 처리 등
       } receiveValue: { [weak self] profile in
-        let purposes = profile.purposes
-        let vc = PlaceDetailViewController()
+        guard let self = self else { return }
+        let purposes = profile.purpose ?? []
+        let isLiked = self.likedPlaceIds.contains(placeInfo.placeID ?? "")
+        let vc = PlaceDetailViewController(
+          placeId: placeInfo.placeID ?? "",
+          updateLikeStatusUseCase: appDIContainer.updateLikeStatusUseCase,
+          isLiked: isLiked
+        )
         vc.modalPresentationStyle = .overFullScreen
         vc.delegate = self
         vc.configure(with: placeInfo, purposes: purposes)
-        self?.present(vc, animated: false)
+        self.present(vc, animated: false)
       }
       .store(in: &cancellables)
   }
@@ -619,6 +880,15 @@ extension MapViewController: PlaceDetailViewControllerDelegate {
       }
     }
   }
+  
+  func placeDetailViewController(_ controller: PlaceDetailViewController, didChangeLikeStatus placeId: String, isLiked: Bool) {
+    if isLiked {
+      likedPlaceIds.insert(placeId)
+    } else {
+      likedPlaceIds.remove(placeId)
+    }
+    print("현재 좋아요한 장소들: \(likedPlaceIds)")
+  }
 }
 
 // MARK: - Google Maps Delegate
@@ -626,6 +896,21 @@ extension MapViewController: GMSMapViewDelegate {
   func mapView(_ mapView: GMSMapView, didTapAt coordinate: CLLocationCoordinate2D) {
     if !placeCardsContainer.isHidden {
       placeCardsContainer.hide(animated: true)
+      
+      // 내 위치 버튼 위치 업데이트
+      UIView.animate(withDuration: 0.3) {
+        self.myLocationButton.snp.remakeConstraints { make in
+          make.trailing.equalToSuperview().offset(-24)
+          make.bottom.equalTo(self.view.safeAreaLayoutGuide).offset(-16)
+          make.width.height.equalTo(48)
+        }
+        self.favoriteButton.snp.remakeConstraints { make in
+          make.trailing.equalTo(self.myLocationButton)
+          make.bottom.equalTo(self.myLocationButton.snp.top).offset(-12)
+          make.width.height.equalTo(48)
+        }
+        self.view.layoutIfNeeded()
+      }
     }
   }
   

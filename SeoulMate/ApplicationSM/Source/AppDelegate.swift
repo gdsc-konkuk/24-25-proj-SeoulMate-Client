@@ -39,9 +39,6 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
       // TODO: Alert
     }
     
-    // 로그인 상태 복원은 UserSessionManager에서 자동으로 처리됨
-    // 기존 코드는 제거하고 필요한 경우에만 직접 처리
-    
     return true
   }
   

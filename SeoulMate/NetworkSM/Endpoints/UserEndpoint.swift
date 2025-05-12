@@ -10,7 +10,7 @@ import Alamofire
 
 enum UserEndpoint: Endpoint {
   case getProfile
-  case updateProfile(userName: String, birthYear: String, companion: String, purposes: [String])
+  case updateProfile(name: String, birthYear: String, companion: String, purpose: [String])
   case getHistories(userId: Int64, like: Bool?)
   
   var path: String {
@@ -40,10 +40,10 @@ enum UserEndpoint: Endpoint {
       
     case .updateProfile(let userName, let birthYear, let companion, let purposes):
       return [
-        "userName": userName,
+        "name": userName,
         "birthYear": birthYear,
         "companion": companion,
-        "purposes": purposes
+        "purpose": purposes
       ]
       
     case .getHistories(_, let like):

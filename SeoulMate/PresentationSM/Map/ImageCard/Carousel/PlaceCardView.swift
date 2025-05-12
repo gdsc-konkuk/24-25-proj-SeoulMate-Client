@@ -49,14 +49,7 @@ final class PlaceCardView: UIView {
   
   // MARK: - Configuration
   func configure(with placeInfo: PlaceCardInfo) {
-    // 장소 이름 설정
-    let nameAttributes: [NSAttributedString.Key: Any] = [
-      .font: UIFont(name: "SFPro-Bold", size: 18) ?? .systemFont(ofSize: 18, weight: .bold),
-      .foregroundColor: UIColor.black
-    ]
-    let nameAttributedString = NSAttributedString(string: placeInfo.name, attributes: nameAttributes)
-    placeName?.attributedText = nameAttributedString
-    
+    placeName?.text = placeInfo.name
     placeAddress?.text = placeInfo.address
     placeDistance?.text = placeInfo.distanceText
     placeReview?.text = placeInfo.ratingText
