@@ -295,22 +295,33 @@ final class FilterViewController: UIViewController {
       }
       .assign(to: \.selectedPurposes, on: self)
       .store(in: &subscriptions)
+      
+    // Apply 버튼 활성화 상태 관리
+    $selectedPurposes
+      .map { !$0.isEmpty }
+      .sink { [weak self] isEnabled in
+        guard let self = self else { return }
+        self.applyButton.isEnabled = isEnabled
+        self.applyButton.alpha = isEnabled ? 1.0 : 0.5
+        self.applyButton.backgroundColor = isEnabled ? .main500 : .gray200
+      }
+      .store(in: &subscriptions)
   }
   
   // 사용자 프로필 정보 로드
   private func loadUserProfile() {
-    print("🔍 loadUserProfile called")
+    Logger.log("🔍 loadUserProfile called")
     getUserProfileUseCase.execute()
       .receive(on: DispatchQueue.main)
       .sink { completion in
         switch completion {
         case .finished:
-          print("✅ Profile load finished")
+          Logger.log("✅ Profile load finished")
         case .failure(let error):
-          print("❌ Failed to load profile: \(error)")
+          Logger.log("❌ Failed to load profile: \(error)")
         }
       } receiveValue: { [weak self] profile in
-        print("📦 Received profile: \(profile)")
+        Logger.log("📦 Received profile: \(profile)")
         self?.updateUIWithProfile(profile)
       }
       .store(in: &cancellables)
@@ -318,7 +329,7 @@ final class FilterViewController: UIViewController {
   
   private func updateUIWithProfile(_ profile: UserProfileResponse) {
     // 기존 선택 사항 표시
-    if let companionIndex = travelCompanions.firstIndex(of: profile.companion) {
+    if let companionIndex = travelCompanions.firstIndex(of: profile.companion ?? "") {
       companionStackView.selectItem(at: companionIndex)
       selectedCompanion = profile.companion
     }
@@ -362,31 +373,22 @@ final class FilterViewController: UIViewController {
   }
   
   private func saveFilterData(_ filterData: FilterData) {
-    // 현재 프로필 가져오기
-    getUserProfileUseCase.execute()
-      .flatMap { [weak self] profile -> AnyPublisher<Void, NetworkError> in
-        guard let self = self else {
-          return Fail(error: NetworkError.unknown(NSError())).eraseToAnyPublisher()
-        }
-        
-        // 프로필 업데이트
-        return self.updateUserProfileUseCase.execute(
-          userName: profile.name,
-          // TODO: 일단 birthYear는 필요x -> 그냥 막 쏠 예정
-          birthYear: "2020-08-01",
-          companion: filterData.companion ?? profile.companion,
-          purposes: filterData.purposes.isEmpty ? (profile.purpose ?? []) : filterData.purposes
-        )
+    // 직접 프로필 업데이트 (사전 프로필 가져오기 없이)
+    updateUserProfileUseCase.execute(
+      userName: "User", // TODO: 사용자 이름 적용
+      birthYear: "2020-08-01", // 기본값 사용
+      companion: filterData.companion ?? "",
+      purposes: filterData.purposes
+    )
+    .receive(on: DispatchQueue.main)
+    .sink { completion in
+      switch completion {
+      case .finished:
+        Logger.log("Filter data saved successfully")
+      case .failure(let error):
+        Logger.log("Failed to save filter data: \(error)")
       }
-      .receive(on: DispatchQueue.main)
-      .sink { completion in
-        switch completion {
-        case .finished:
-          print("Filter data saved successfully")
-        case .failure(let error):
-          print("Failed to save filter data: \(error)")
-        }
-      } receiveValue: { _ in }
-      .store(in: &cancellables)
+    } receiveValue: { _ in }
+    .store(in: &cancellables)
   }
 }

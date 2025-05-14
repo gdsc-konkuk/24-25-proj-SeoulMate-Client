@@ -8,5 +8,5 @@
 import Foundation
 
 protocol ChatRepositoryProtocol {
-  func sendMessage(placeId: String, chatType: ChatType) async throws -> ChatResponseModel
+  func sendMessage(placeId: String, chatType: ChatType, text: String) async throws -> ChatResponseModel
 }

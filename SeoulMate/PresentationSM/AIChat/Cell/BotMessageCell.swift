@@ -7,10 +7,20 @@
 
 import UIKit
 import SnapKit
-import CoreData
+import Combine
 
-class BotMessageCell: BaseMessageCell {
+protocol BotMessageCellDelegate: AnyObject {
+  func didTapFitnessScore()
+  func didTapFreeChat()
+}
+
+final class BotMessageCell: BaseMessageCell {
   static let identifier = "BotMessageCell"
+  
+  weak var delegate: BotMessageCellDelegate?
+  
+  private var subscriptions = Set<AnyCancellable>()
+  
   private let profileImageView: UIImageView = {
     let imageView = UIImageView()
     imageView.contentMode = .scaleAspectFill
@@ -21,18 +31,14 @@ class BotMessageCell: BaseMessageCell {
   }()
   
   private let chatTypeStackView: DynamicStackView = {
-    let stack = DynamicStackView()
-    stack.setItems(["Fitness Score", "Free Chat"])
-    stack.buttonHeight = 40
-    stack.buttonFont = .mediumFont(ofSize: 16)
-    stack.normalBackgroundColor = .white
-    stack.normalTextColor = .gray500
-    stack.normalBorderColor = .gray500
-    stack.selectedBackgroundColor = .main100
-    stack.selectedTextColor = .main500
-    stack.selectedBorderColor = .main500
-    stack.buttonCornerRadius = 20
-    return stack
+    let stackView = DynamicStackView()
+    stackView.isSingleSelectionMode = true
+    stackView.buttonFont = .mediumFont(ofSize: 16)
+    stackView.buttonHeight = 40
+    stackView.buttonCornerRadius = 20
+    stackView.buttonVerticalPadding = 10
+    stackView.buttonHorizontalPadding = 18
+    return stackView
   }()
   
   override func setupUI() {
@@ -42,10 +48,13 @@ class BotMessageCell: BaseMessageCell {
     messageBubble.backgroundColor = .systemGray6
     messageLabel.textColor = .black
     
+    // Set the items after adding to contentView
+    chatTypeStackView.setItems(["Fitness Score", "Free Chat"])
+    
     // 기존 레이아웃
     profileImageView.snp.remakeConstraints { make in
       make.left.equalToSuperview().offset(16)
-      make.top.equalToSuperview().offset(8)
+      make.top.equalToSuperview().offset(4)
       make.width.height.equalTo(40)
     }
     
@@ -68,10 +77,35 @@ class BotMessageCell: BaseMessageCell {
       make.left.equalTo(profileImageView.snp.right).offset(8)
       make.top.equalTo(profileImageView.snp.top).offset(24)
     }
+    
+    // 셀렉션 퍼블리셔 구독
+    chatTypeStackView.selectionPublisher
+      .sink { [weak self] selectedItem in
+        guard let self = self else { return }
+        
+        if selectedItem.isSelected {
+          if selectedItem.index == 0 { // Fitness Score
+            self.delegate?.didTapFitnessScore()
+          } else if selectedItem.index == 1 { // Free Chat
+            self.delegate?.didTapFreeChat()
+          }
+          
+          // 선택 해제
+          DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+            self.chatTypeStackView.clearSelection()
+          }
+        }
+      }
+      .store(in: &subscriptions)
   }
   
-  func configure(with message: ChatMessage, showChatTypeStackView: Bool = false) {
+  func configure(with message: ChatMessage) {
     configureMessage(text: message.text, date: message.timestamp)
+    
+    // 첫 번째 셀의 상단 여백 조정
+    profileImageView.snp.updateConstraints { make in
+      make.top.equalToSuperview().offset(0) // 상단 여백 제거
+    }
     
     bubbleCorners = ([.topRight, .bottomLeft, .bottomRight], 16)
     setNeedsLayout()

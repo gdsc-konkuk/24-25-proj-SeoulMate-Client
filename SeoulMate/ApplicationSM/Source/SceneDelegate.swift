@@ -27,7 +27,8 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
     
     // MARK: 백엔드 서버 구현시
     if UserSessionManager.shared.isLoggedIn {
-      showMainTabBar()
+      showLoginScreen()
+      // showMainTabBar()
     } else {
       showLoginScreen()
     }
@@ -45,5 +46,22 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
   private func showMainTabBar() {
     let tabBarController = TabBarController(appDIContainer: appDIContainer)
     window?.rootViewController = tabBarController
+  }
+  
+  // 온보딩 화면으로 이동하는 메서드 추가
+  func showOnboardingScreen() {
+    let loginSceneDIContainer = appDIContainer.makeLoginSceneDIContainer()
+    let travelWithVC = loginSceneDIContainer.makeTravelWithViewController()
+    
+    // 이미 navigationController가 있는 경우를 체크
+    if let existingNavController = window?.rootViewController as? UINavigationController {
+      // 기존 navigationController에 push
+      existingNavController.pushViewController(travelWithVC, animated: true)
+    } else {
+      // 새로운 navigationController 생성
+      let navigationController = UINavigationController(rootViewController: travelWithVC)
+      window?.rootViewController = navigationController
+    }
+    window?.makeKeyAndVisible()
   }
 }

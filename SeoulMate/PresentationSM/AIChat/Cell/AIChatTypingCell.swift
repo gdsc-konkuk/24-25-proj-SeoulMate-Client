@@ -1,3 +1,10 @@
+//
+//  AIChatTypingCell.swift
+//  SeoulMate
+//
+//  Created by 박성근 on 5/12/25.
+//
+
 import UIKit
 import SnapKit
 
@@ -51,7 +58,7 @@ final class AIChatTypingCell: UITableViewCell {
     contentView.addSubview(profileImageView)
     profileImageView.snp.makeConstraints { make in
       make.left.equalToSuperview().offset(16)
-      make.top.equalToSuperview().offset(8)
+      make.top.equalToSuperview().offset(4)
       make.width.height.equalTo(40)
     }
     

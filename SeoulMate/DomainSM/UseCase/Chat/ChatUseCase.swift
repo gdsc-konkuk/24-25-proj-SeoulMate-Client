@@ -14,7 +14,7 @@ final class ChatUseCase: ChatUseCaseProtocol {
     self.repository = repository
   }
   
-  func sendMessage(placeId: String, chatType: ChatType) async throws -> ChatResponseModel {
-    return try await repository.sendMessage(placeId: placeId, chatType: chatType)
+  func sendMessage(placeId: String, chatType: ChatType, text: String) async throws -> ChatResponseModel {
+    return try await repository.sendMessage(placeId: placeId, chatType: chatType, text: text)
   }
 }

@@ -68,6 +68,32 @@ final class AIChatViewController: UIViewController {
     setupUI()
     setupKeyboardObservers()
     loadInitialMessages()
+    
+    // 시스템의 자동 컨텐츠 인셋 조정 비활성화
+    tableView.contentInsetAdjustmentBehavior = .never
+  }
+  
+  override func viewDidLayoutSubviews() {
+    super.viewDidLayoutSubviews()
+    
+    // 레이아웃이 완료된 후 다시 한번 여백 확인 및 조정
+    if tableView.contentInset.top != 0 {
+      tableView.contentInset = UIEdgeInsets(top: 0, left: 0, bottom: 0, right: 0)
+      tableView.contentOffset = CGPoint(x: 0, y: 0)
+    }
+  }
+  
+  override func viewWillAppear(_ animated: Bool) {
+    super.viewWillAppear(animated)
+    
+    // 뷰가 나타날 때마다 여백 재설정
+    tableView.contentInset = UIEdgeInsets.zero
+    tableView.scrollIndicatorInsets = UIEdgeInsets.zero
+    
+    // 첫 번째 셀이 상단에 붙도록 contentOffset 재설정
+    if tableView.numberOfRows(inSection: 0) > 0 {
+      tableView.setContentOffset(.zero, animated: false)
+    }
   }
   
   // MARK: - Setup
@@ -84,6 +110,7 @@ final class AIChatViewController: UIViewController {
     setupTableView()
     setupBottomBackground()
     setupLoadingIndicator()
+    setupTapGestureRecognizer()
   }
   
   private func setupNavBar() {
@@ -116,6 +143,10 @@ final class AIChatViewController: UIViewController {
     tableView.register(BotMessageCell.self, forCellReuseIdentifier: BotMessageCell.identifier)
     tableView.register(AIChatTypingCell.self, forCellReuseIdentifier: AIChatTypingCell.identifier)
     
+    tableView.contentInset = UIEdgeInsets.zero
+    tableView.automaticallyAdjustsScrollIndicatorInsets = false
+    tableView.sectionHeaderHeight = 0
+    
     tableView.snp.makeConstraints { make in
       make.top.equalTo(navBar.snp.bottom)
       make.left.right.equalToSuperview()
@@ -140,7 +171,7 @@ final class AIChatViewController: UIViewController {
     inputTextField.textColor = .lightGray
     inputTextField.attributedPlaceholder = NSAttributedString(string: "Ask me anything..", attributes: [NSAttributedString.Key.foregroundColor: UIColor.gray])
     inputTextField.layer.cornerRadius = 24
-    inputTextField.font = .systemFont(ofSize: 16)
+    inputTextField.font = .mediumFont(ofSize: 16)
     inputTextField.returnKeyType = .send
     inputTextField.delegate = self
     inputTextField.borderStyle = .none
@@ -149,7 +180,7 @@ final class AIChatViewController: UIViewController {
     let paperplane = UIImageView(image: UIImage(systemName: "paperplane"))
     paperplane.tintColor = .gray
     paperplane.contentMode = .scaleAspectFit
-    paperplane.frame = CGRect(x: 8, y: 8, width: 24, height: 24)
+    paperplane.frame = CGRect(x: -4, y: 8, width: 24, height: 24)
     rightContainer.addSubview(paperplane)
     
     let tap = UITapGestureRecognizer(target: self, action: #selector(paperplaneTapped))
@@ -205,7 +236,12 @@ final class AIChatViewController: UIViewController {
     )
   }
   
-  // MARK: - Actions
+  private func setupTapGestureRecognizer() {
+    let tapGesture = UITapGestureRecognizer(target: self, action: #selector(dismissKeyboard))
+    tapGesture.cancelsTouchesInView = false
+    tableView.addGestureRecognizer(tapGesture)
+  }
+  
   @objc private func keyboardWillShow(_ notification: Notification) {
     guard let keyboardFrame = notification.userInfo?[UIResponder.keyboardFrameEndUserInfoKey] as? CGRect,
           let duration = notification.userInfo?[UIResponder.keyboardAnimationDurationUserInfoKey] as? Double else { return }
@@ -265,33 +301,57 @@ final class AIChatViewController: UIViewController {
     inputTextField.text = ""
   }
   
-  private func sendMessage(_ text: String) {
+  @objc private func dismissKeyboard() {
+    view.endEditing(true)
+  }
+  
+  private func sendMessage(_ text: String, chatType: ChatType = .FREE_CHAT) {
     let userMessage = ChatMessage(
       text: text,
       sender: "user",
       timestamp: Date(),
-      chatType: .FREE_CHAT
+      chatType: chatType
     )
     messages.append(userMessage)
     tableView.reloadData()
-    scrollToBottom()
     
+    // 키보드 내리기
+    view.endEditing(true)
+    
+    // 타이핑 셀 표시 및 스크롤
     isBotTyping = true
     tableView.reloadData()
+    
+    // 키보드가 내려간 후에 스크롤 실행
+    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+      self.scrollToBottom()
+    }
     
     Task {
       do {
         let response = try await useCase.sendMessage(
           placeId: placeInfo?.placeID ?? "",
-          chatType: .FREE_CHAT
+          chatType: chatType,
+          text: text
         )
         await MainActor.run {
-          let botMessage = ChatMessage(
-            text: response.reply,
-            sender: "bot",
-            timestamp: Date(),
-            chatType: .REPLY
-          )
+          let botMessage: ChatMessage
+          if chatType == .FITNESS_SCORE {
+            let scoreText = "점수: \(response.score ?? "N/A")\n\n설명: \(response.explanation ?? "설명이 없습니다.")"
+            botMessage = ChatMessage(
+              text: scoreText,
+              sender: "bot",
+              timestamp: Date(),
+              chatType: .REPLY
+            )
+          } else {
+            botMessage = ChatMessage(
+              text: response.reply ?? "응답이 없습니다.",
+              sender: "bot",
+              timestamp: Date(),
+              chatType: .REPLY
+            )
+          }
           self.messages.append(botMessage)
           self.isBotTyping = false
           self.tableView.reloadData()
@@ -317,17 +377,24 @@ final class AIChatViewController: UIViewController {
   private func loadInitialMessages() {
     loadingIndicator?.startAnimating()
     
+    // 상단에 약간의 여백 추가
+    tableView.contentInset = UIEdgeInsets(top: 4, left: 0, bottom: 0, right: 0)
+    tableView.verticalScrollIndicatorInsets = UIEdgeInsets.zero
+    
     DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { [weak self] in
       guard let self = self else { return }
       
       let welcomeMessage = ChatMessage(
-        text: "안녕하세요! 서울메이트입니다. 서울 여행에 관해 무엇이든 물어보세요.",
+        text: "Hi there! Nice to see you. I am Seoulmate Bot. How can I help you?",
         sender: "bot",
         timestamp: Date(),
         chatType: .REPLY
       )
       self.messages = [welcomeMessage]
       self.tableView.reloadData()
+      
+      // 명시적으로 contentOffset 설정
+      self.tableView.contentOffset = CGPoint(x: 0, y: 0)
       
       if !self.messages.isEmpty {
         self.scrollToBottom()
@@ -350,6 +417,17 @@ final class AIChatViewController: UIViewController {
     self.placeInfo = placeInfo
     loadInitialMessages()
   }
+  
+  // MARK: - Fitness Score
+  func requestFitnessScore() {
+    guard let placeInfo = placeInfo else { return }
+    
+    let fitnessScoreText = "\(placeInfo.name)\nFitness Score"
+    inputTextField.text = fitnessScoreText
+    
+    sendMessage(fitnessScoreText, chatType: .FITNESS_SCORE)
+    inputTextField.text = ""
+  }
 }
 
 // MARK: - UITableViewDataSource
@@ -364,14 +442,33 @@ extension AIChatViewController: UITableViewDataSource {
       if message.sender == "user" {
         let cell = tableView.dequeueReusableCell(withIdentifier: UserMessageCell.identifier, for: indexPath) as! UserMessageCell
         cell.configure(with: message)
+        
+        // 첫 번째 셀 여백 확인
+        if indexPath.row == 0 {
+          cell.contentView.layoutMargins = UIEdgeInsets.zero
+        }
+        
         return cell
       } else {
         let cell = tableView.dequeueReusableCell(withIdentifier: BotMessageCell.identifier, for: indexPath) as! BotMessageCell
         cell.configure(with: message)
+        cell.delegate = self
+        
+        // 첫 번째 셀 여백 확인
+        if indexPath.row == 0 {
+          cell.contentView.layoutMargins = UIEdgeInsets.zero
+        }
+        
         return cell
       }
     } else {
       let cell = tableView.dequeueReusableCell(withIdentifier: AIChatTypingCell.identifier, for: indexPath) as! AIChatTypingCell
+      
+      // 첫 번째 셀 여백 확인
+      if indexPath.row == 0 {
+        cell.contentView.layoutMargins = UIEdgeInsets.zero
+      }
+      
       return cell
     }
   }
@@ -394,6 +491,11 @@ extension AIChatViewController: UITableViewDelegate {
   func tableView(_ tableView: UITableView, estimatedHeightForRowAt indexPath: IndexPath) -> CGFloat {
     return 60
   }
+  
+  func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
+    tableView.deselectRow(at: indexPath, animated: true)
+    view.endEditing(true)
+  }
 }
 
 extension AIChatViewController: UITextFieldDelegate {
@@ -401,5 +503,17 @@ extension AIChatViewController: UITextFieldDelegate {
     sendMessage()
     textField.resignFirstResponder()
     return true
+  }
+}
+
+// MARK: - BotMessageCellDelegate
+extension AIChatViewController: BotMessageCellDelegate {
+  func didTapFitnessScore() {
+    requestFitnessScore()
+  }
+  
+  func didTapFreeChat() {
+    // 키보드 표시
+    inputTextField.becomeFirstResponder()
   }
 }

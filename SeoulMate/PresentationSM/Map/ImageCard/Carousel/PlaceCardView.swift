@@ -49,13 +49,14 @@ final class PlaceCardView: UIView {
   
   // MARK: - Configuration
   func configure(with placeInfo: PlaceCardInfo) {
+    Logger.log("PlaceCardView - 카드 구성: \(placeInfo.name), 설명: \(placeInfo.description ?? "없음")")
     placeName?.text = placeInfo.name
     placeAddress?.text = placeInfo.address
     placeDistance?.text = placeInfo.distanceText
     placeReview?.text = placeInfo.ratingText
     
     // 사진 로드
-    if let placeId = placeInfo.placeID {
+    if let placeId = placeInfo.placeID, !placeId.isEmpty {
       loadFirstPhoto(from: placeId)
     } else {
       setPlaceholderImage()
@@ -71,14 +72,14 @@ final class PlaceCardView: UIView {
       
       // 첫 번째 사진 메타데이터 가져오기
       guard let photoMetadata = photos?.results.first else {
-        print("No photos available for this place")
+        Logger.log("No photos available for this place")
         return
       }
       
       // 사진 요청
       self.placesClient.loadPlacePhoto(photoMetadata) { (photo, error) in
         if let error = error {
-          print("Error loading photo: \(error.localizedDescription)")
+          Logger.log("Error loading photo: \(error.localizedDescription)")
           self.setPlaceholderImage()
           return
         }

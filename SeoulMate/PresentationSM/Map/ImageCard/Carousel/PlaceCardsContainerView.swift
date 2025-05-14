@@ -78,11 +78,20 @@ final class PlaceCardsContainerView: UIView {
   
   // MARK: - Public Methods
   func configure(with places: [PlaceCardInfo]) {
+    Logger.log("PlaceCardsContainerView - 카드 구성: \(places.count)개의 장소")
     self.places = places
     pageControl.numberOfPages = places.count
     pageControl.currentPage = 0
     currentIndex = 0
     collectionView.reloadData()
+    
+    // 컬렉션 뷰가 실제로 업데이트되었는지 확인
+    DispatchQueue.main.async {
+      Logger.log("컬렉션 뷰 아이템 수: \(self.collectionView.numberOfItems(inSection: 0))")
+      if !self.places.isEmpty && self.collectionView.numberOfItems(inSection: 0) > 0 {
+        self.collectionView.scrollToItem(at: IndexPath(item: 0, section: 0), at: .centeredHorizontally, animated: false)
+      }
+    }
   }
   
   func scrollToIndex(_ index: Int, animated: Bool = true) {

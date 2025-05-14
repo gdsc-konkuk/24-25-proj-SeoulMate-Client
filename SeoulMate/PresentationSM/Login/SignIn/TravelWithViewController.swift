@@ -100,6 +100,16 @@ final class TravelWithViewController: UIViewController {
     setupActions()
     setupBindings()
   }
+  
+  override func viewWillAppear(_ animated: Bool) {
+    super.viewWillAppear(animated)
+    navigationController?.setNavigationBarHidden(true, animated: false)
+  }
+  
+  override func viewWillDisappear(_ animated: Bool) {
+    super.viewWillDisappear(animated)
+    navigationController?.setNavigationBarHidden(false, animated: false)
+  }
 }
 
 extension TravelWithViewController {
@@ -206,6 +216,7 @@ extension TravelWithViewController {
 // MARK: - Action Methods
 extension TravelWithViewController {
   @objc private func backButtonTapped() {
+    // 이전 화면으로 돌아가기
     navigationController?.popViewController(animated: true)
   }
   

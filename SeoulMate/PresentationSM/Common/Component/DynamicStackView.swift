@@ -171,12 +171,12 @@ extension DynamicStackView {
       title: title,
       fontStyle: buttonFont,
       titleColor: normalTextColor,
-      backgroundColor: normalBackgroundColor
+      backgroundColor: normalBackgroundColor,
+      radius: buttonCornerRadius
     )
     button.tag = index
     
     // 버튼 스타일 설정
-    button.layer.cornerRadius = buttonCornerRadius
     button.layer.borderWidth = buttonBorderWidth
     button.layer.borderColor = normalBorderColor.cgColor
     

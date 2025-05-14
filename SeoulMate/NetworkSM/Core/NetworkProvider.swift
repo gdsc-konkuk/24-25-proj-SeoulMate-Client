@@ -30,8 +30,8 @@ final class NetworkProvider: NetworkProviderProtocol {
   init(interceptor: RequestInterceptor? = NetworkInterceptor(),
        eventMonitors: [EventMonitor] = [NetworkLogger()]) {
     let configuration = URLSessionConfiguration.default
-    configuration.timeoutIntervalForRequest = 30
-    configuration.timeoutIntervalForResource = 60
+    configuration.timeoutIntervalForRequest = 120
+    configuration.timeoutIntervalForResource = 180
     configuration.headers = .default
     
     self.session = Session(
@@ -45,9 +45,9 @@ final class NetworkProvider: NetworkProviderProtocol {
     return Future<T, NetworkError> { promise in
       do {
         let urlRequest = try endpoint.asURLRequest()
-        print("🔍 Created URLRequest: \(urlRequest.httpMethod ?? "unknown") \(urlRequest.url?.absoluteString ?? "")")
-        print("🔍 Request Headers: \(urlRequest.allHTTPHeaderFields ?? [:])")
-        print("🔍 Request Body: \(String(data: urlRequest.httpBody ?? Data(), encoding: .utf8) ?? "none")")
+        Logger.log("🔍 Created URLRequest: \(urlRequest.httpMethod ?? "unknown") \(urlRequest.url?.absoluteString ?? "")")
+        Logger.log("🔍 Request Headers: \(urlRequest.allHTTPHeaderFields ?? [:])")
+        Logger.log("🔍 Request Body: \(String(data: urlRequest.httpBody ?? Data(), encoding: .utf8) ?? "none")")
         
         self.session.request(urlRequest)
           .validate()

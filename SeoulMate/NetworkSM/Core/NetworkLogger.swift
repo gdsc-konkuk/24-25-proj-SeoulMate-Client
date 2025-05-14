@@ -102,7 +102,7 @@ final class CustomNetworkLogger {
     let headers = request.allHTTPHeaderFields ?? [:]
     let body = request.httpBody.flatMap { String(data: $0, encoding: .utf8) } ?? "No Body"
     
-    print("""
+    Logger.log("""
         
         📡 Network Request:
         - URL: \(urlString)
@@ -120,7 +120,7 @@ final class CustomNetworkLogger {
     let dataString = data.flatMap { String(data: $0, encoding: .utf8) } ?? "No Data"
     let errorString = error?.localizedDescription ?? "No Error"
     
-    print("""
+    Logger.log("""
         
         📡 Network Response:
         - Status Code: \(statusCode)

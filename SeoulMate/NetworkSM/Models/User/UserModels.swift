@@ -9,9 +9,9 @@ import Foundation
 
 // MARK: - User Models
 struct UserProfileResponse: Decodable {
-  let name: String
-  let birthYear: String
-  let companion: String
+  let name: String?
+  let birthYear: String?
+  let companion: String?
   let purpose: [String]?
 }
 

@@ -9,6 +9,7 @@ import UIKit
 import Combine
 import SnapKit
 import SwiftUI
+import GoogleSignIn
 
 final class TravelPurposeViewController: UIViewController {
   
@@ -125,6 +126,16 @@ final class TravelPurposeViewController: UIViewController {
     setupConstraints()
     setupActions()
     setupBindings()
+  }
+  
+  override func viewWillAppear(_ animated: Bool) {
+    super.viewWillAppear(animated)
+    navigationController?.setNavigationBarHidden(true, animated: false)
+  }
+  
+  override func viewWillDisappear(_ animated: Bool) {
+    super.viewWillDisappear(animated)
+    navigationController?.setNavigationBarHidden(false, animated: false)
   }
 }
 
@@ -280,26 +291,27 @@ extension TravelPurposeViewController {
   }
   
   private func submitProfile() {
-    let userName = "New User"
-    let birthYear = "2000"
+    // Google 사용자 정보 가져오기
+    let userName = GIDSignIn.sharedInstance.currentUser?.profile?.name ?? "User"
+    let birthYear = "2020-08-01"  // 올바른 날짜 형식 사용
     
     updateUserProfileUseCase.execute(
       userName: userName,
       birthYear: birthYear,
-      companion: travelCompanion,  // 이전 화면에서 받은 데이터
-      purposes: selectedPurposes   // 현재 화면에서 선택한 데이터
+      companion: travelCompanion,
+      purposes: selectedPurposes
     )
     .receive(on: DispatchQueue.main)
     .sink { [weak self] completion in
       switch completion {
       case .finished:
-        break
+        Logger.log("✅ Profile update finished")
       case .failure(let error):
-        print("프로필 업데이트 실패: \(error.localizedDescription)")
+        Logger.log("❌ Profile update failed: \(error)")
         self?.showErrorAlert()
       }
     } receiveValue: { [weak self] _ in
-      // 성공 시 완료 화면으로 이동
+      Logger.log("✅ Profile updated successfully")
       self?.navigateToCompleteScreen()
     }
     .store(in: &subscriptions)
@@ -312,11 +324,11 @@ extension TravelPurposeViewController {
   
   private func showErrorAlert() {
     let alert = UIAlertController(
-      title: "오류",
-      message: "프로필 정보 저장에 실패했습니다.",
+      title: "Error",
+      message: "Failed to save profile information.",
       preferredStyle: .alert
     )
-    alert.addAction(UIAlertAction(title: "확인", style: .default))
+    alert.addAction(UIAlertAction(title: "OK", style: .default))
     present(alert, animated: true)
   }
 }

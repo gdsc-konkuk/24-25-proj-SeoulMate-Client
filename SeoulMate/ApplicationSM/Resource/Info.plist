@@ -13,8 +13,6 @@
 			</array>
 		</dict>
 	</array>
-	<key>GIDClientID</key>
-	<string>$(GOOGLE_LOGIN_CLIENT_ID)</string>
 	<key>GOOGLE_LOGIN_CLIENT_ID</key>
 	<string>$(GOOGLE_LOGIN_CLIENT_ID)</string>
 	<key>GOOGLE_MAP_API_KEY</key>
@@ -56,5 +54,9 @@
 			</array>
 		</dict>
 	</dict>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>We need your location information to display your current location on a map and recommend nearby attractions.</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>We need your location information to display your current location on a map and recommend nearby attractions.</string>
 </dict>
 </plist>

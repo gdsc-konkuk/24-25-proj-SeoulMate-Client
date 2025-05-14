@@ -53,9 +53,23 @@ final class PlaceDetailView: UIView {
   
   let likeButton: UIButton = {
     let button = UIButton(type: .custom)
-    button.setImage(UIImage(systemName: "heart"), for: .normal)
-    button.setImage(UIImage(systemName: "heart.fill"), for: .selected)
-    button.tintColor = .white
+    let unfilledImage = UIImage(named: "heart_unfilled")
+    let filledImage = UIImage(named: "heart_filled")
+    
+    // 이미지 크기 조정
+    let imageSize = CGSize(width: 20, height: 20)
+    let renderer = UIGraphicsImageRenderer(size: imageSize)
+    
+    let resizedUnfilled = renderer.image { _ in
+      unfilledImage?.draw(in: CGRect(origin: .zero, size: imageSize))
+    }
+    
+    let resizedFilled = renderer.image { _ in
+      filledImage?.draw(in: CGRect(origin: .zero, size: imageSize))
+    }
+    
+    button.setImage(resizedUnfilled, for: .normal)
+    button.setImage(resizedFilled, for: .selected)
     button.backgroundColor = UIColor.black.withAlphaComponent(0.3)
     button.layer.cornerRadius = 18
     button.clipsToBounds = true
@@ -254,7 +268,7 @@ final class PlaceDetailView: UIView {
       guard let self = self else { return }
       
       if let error = error {
-        print("Error fetching photos: \(error.localizedDescription)")
+        Logger.log("Error fetching photos: \(error.localizedDescription)")
         self.setPlaceholderImage()
         self.loadingIndicator.stopAnimating()
         return
@@ -264,7 +278,7 @@ final class PlaceDetailView: UIView {
       let photoMetadataList = photos?.results.prefix(3) ?? []
       
       if photoMetadataList.isEmpty {
-        print("No photos available for this place")
+        Logger.log("No photos available for this place")
         self.setPlaceholderImage()
         self.loadingIndicator.stopAnimating()
         return
@@ -286,7 +300,7 @@ final class PlaceDetailView: UIView {
           guard let self = self else { return }
           
           if let error = error {
-            print("Error loading photo: \(error.localizedDescription)")
+            Logger.log("Error loading photo: \(error.localizedDescription)")
             return
           }
           

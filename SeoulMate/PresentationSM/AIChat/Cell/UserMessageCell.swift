@@ -7,9 +7,8 @@
 
 import UIKit
 import SnapKit
-import CoreData
 
-class UserMessageCell: BaseMessageCell {
+final class UserMessageCell: BaseMessageCell {
   static let identifier = "UserMessageCell"
   
   override func setupUI() {
@@ -19,15 +18,16 @@ class UserMessageCell: BaseMessageCell {
   }
   
   func configure(with message: ChatMessage) {
-    configureMessage(text: message.text ?? "", date: message.timestamp ?? Date())
-
+    configureMessage(text: message.text, date: message.timestamp)
+    
     // Layout: [timestamp][bubble] right-aligned
     messageBubble.snp.remakeConstraints { make in
-      make.top.greaterThanOrEqualToSuperview().offset(8)
+      make.top.greaterThanOrEqualToSuperview().offset(4)
       make.bottom.equalToSuperview().offset(-8)
       make.trailing.equalToSuperview().offset(-16)
       make.leading.greaterThanOrEqualToSuperview().offset(60)
     }
+    
     timestampLabel.snp.remakeConstraints { make in
       make.trailing.equalTo(messageBubble.snp.leading).offset(-8)
       make.top.equalTo(messageBubble.snp.top).offset(20)
@@ -37,4 +37,4 @@ class UserMessageCell: BaseMessageCell {
     bubbleCorners = ([.topLeft, .bottomLeft, .bottomRight], 16)
     setNeedsLayout()
   }
-} 
+}

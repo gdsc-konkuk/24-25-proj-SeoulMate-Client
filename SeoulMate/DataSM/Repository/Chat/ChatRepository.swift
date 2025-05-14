@@ -14,7 +14,7 @@ final class ChatRepository: ChatRepositoryProtocol {
     self.chatService = chatService
   }
   
-  func sendMessage(placeId: String, chatType: ChatType) async throws -> ChatResponseModel {
-    return try await chatService.sendMessage(placeId: placeId, chatType: chatType)
+  func sendMessage(placeId: String, chatType: ChatType, text: String) async throws -> ChatResponseModel {
+    return try await chatService.sendMessage(placeId: placeId, chatType: chatType, text: text)
   }
 } 

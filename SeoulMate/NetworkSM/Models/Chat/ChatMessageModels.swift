@@ -27,5 +27,13 @@ public struct ChatRequestModel: Codable {
 }
 
 public struct ChatResponseModel: Codable {
-  let reply: String
+  let reply: String?
+  let explanation: String?
+  let score: String?
+  
+  enum CodingKeys: String, CodingKey {
+    case reply
+    case explanation
+    case score
+  }
 }

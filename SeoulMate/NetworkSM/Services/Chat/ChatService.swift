@@ -2,7 +2,7 @@ import Foundation
 import Combine
 
 protocol ChatServiceProtocol {
-    func sendMessage(placeId: String, chatType: ChatType) async throws -> ChatResponseModel
+    func sendMessage(placeId: String, chatType: ChatType, text: String) async throws -> ChatResponseModel
 }
 
 final class ChatService: ChatServiceProtocol {
@@ -12,8 +12,8 @@ final class ChatService: ChatServiceProtocol {
         self.networkProvider = networkProvider
     }
     
-    func sendMessage(placeId: String, chatType: ChatType) async throws -> ChatResponseModel {
-        let endpoint = ChatEndpoint.sendMessage(placeId: placeId, chatType: chatType)
+    func sendMessage(placeId: String, chatType: ChatType, text: String) async throws -> ChatResponseModel {
+        let endpoint = ChatEndpoint.sendMessage(placeId: placeId, chatType: chatType, text: text)
         return try await withCheckedThrowingContinuation { continuation in
             networkProvider.request(endpoint)
                 .sink(

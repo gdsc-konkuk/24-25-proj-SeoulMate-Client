@@ -260,6 +260,9 @@ final class MyPageViewController: UIViewController, UICollectionViewDataSource, 
     
     // 로그아웃 버튼 액션 추가
     logoutButton.addTarget(self, action: #selector(logoutButtonTapped), for: .touchUpInside)
+    
+    // 도움말 버튼 액션 추가
+    helpButton.addTarget(self, action: #selector(helpButtonTapped), for: .touchUpInside)
   }
   
   // MARK: - Data Fetching
@@ -271,7 +274,7 @@ final class MyPageViewController: UIViewController, UICollectionViewDataSource, 
         case .finished:
           break
         case .failure(let error):
-          print("즐겨찾기 장소 가져오기 실패: \(error)")
+          Logger.log("즐겨찾기 장소 가져오기 실패: \(error)")
         }
       } receiveValue: { [weak self] response in
         self?.fetchPlaceDetails(for: response.placeIds)
@@ -345,6 +348,9 @@ final class MyPageViewController: UIViewController, UICollectionViewDataSource, 
     let cell = collectionView.dequeueReusableCell(withReuseIdentifier: "CollectionCell", for: indexPath) as! CollectionCell
     let place = likedPlaces[indexPath.item]
     
+    // 기본 정보 설정
+    cell.configure(image: UIImage(), title: place.name, address: place.address)
+    
     // 장소의 첫 번째 사진을 가져와서 표시
     if let placeId = place.placeID {
       placesClient.lookUpPhotos(forPlaceID: placeId) { [weak self] (photos, error) in
@@ -354,7 +360,7 @@ final class MyPageViewController: UIViewController, UICollectionViewDataSource, 
         self.placesClient.loadPlacePhoto(photoMetadata) { (photo, error) in
           if let photo = photo {
             DispatchQueue.main.async {
-              cell.configure(image: photo)
+              cell.configure(image: photo, title: place.name, address: place.address)
             }
           }
         }
@@ -390,6 +396,12 @@ final class MyPageViewController: UIViewController, UICollectionViewDataSource, 
     alert.addAction(logoutAction)
     
     present(alert, animated: true)
+  }
+  
+  @objc private func helpButtonTapped() {
+    if let url = URL(string: "https://docs.google.com/forms/d/1_1PR0wBzBoqTc5Zo96C0JI1pPeIkGEIU3nf7xJI1P7g/edit") {
+      UIApplication.shared.open(url)
+    }
   }
   
   private func performLogout() {

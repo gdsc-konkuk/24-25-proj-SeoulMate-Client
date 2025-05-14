@@ -16,7 +16,7 @@ enum PlaceEndpoint: Endpoint {
   var path: String {
     switch self {
     case .getRecommendedPlaces:
-      return "/places"
+      return "/places/recommendations"
     case .getLikedPlaces:
       return "/users/me/likes"
     case .updateLikeStatus:

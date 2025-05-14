@@ -52,7 +52,7 @@ struct PlaceCardInfo {
       distance: distance,
       rating: place.rating,
       ratingCount: Int(place.userRatingsTotal),
-      description: place.description
+      description: nil
     )
   }
 }

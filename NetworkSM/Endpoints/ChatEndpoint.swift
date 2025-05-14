@@ -9,11 +9,11 @@ import Foundation
 import Alamofire
 
 enum ChatEndpoint: Endpoint {
-  case sendMessage(placeId: String?, chatType: ChatType, text: String)
+  case sendMessage(placeId: String?, chatType: ChatType)
   
   var path: String {
     switch self {
-    case .sendMessage(let placeId, _, _):
+    case .sendMessage(let placeId, _):
       if let placeId = placeId, !placeId.isEmpty {
         return "/places/chat/\(placeId)"
       } else {
@@ -26,27 +26,12 @@ enum ChatEndpoint: Endpoint {
   
   var parameters: Parameters? {
     switch self {
-    case .sendMessage(_, _, let text):
-      return [
-        "history": [
-          [
-            "role": "human",
-            "content": text
-          ]
-        ],
-        "input": text
-      ]
-    }
-  }
-  
-  var queryParameters: Parameters? {
-    switch self {
-    case .sendMessage(_, let chatType, _):
+    case .sendMessage(_, let chatType):
       return ["chatType": chatType.rawValue]
     }
   }
   
   var encoding: ParameterEncoding {
-    return JSONEncoding.default
+    return URLEncoding(destination: .queryString)
   }
-}
+} 

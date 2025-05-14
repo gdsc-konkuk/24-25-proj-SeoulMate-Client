@@ -14,6 +14,7 @@ protocol Endpoint: URLRequestConvertible {
   var method: HTTPMethod { get }
   var headers: [String: String]? { get }
   var parameters: Parameters? { get }
+  var queryParameters: Parameters? { get }
   var encoding: ParameterEncoding { get }
   var requiresAuth: Bool { get }
 }
@@ -51,8 +52,23 @@ extension Endpoint {
     }
   }
   
+  var queryParameters: Parameters? {
+    return nil
+  }
+  
   func asURLRequest() throws -> URLRequest {
-    let url = try baseURL.asURL().appendingPathComponent(path)
+    var url = try baseURL.asURL().appendingPathComponent(path)
+    
+    // Add query parameters if any
+    if let queryParams = queryParameters {
+      let queryItems = queryParams.map { URLQueryItem(name: $0.key, value: "\($0.value)") }
+      var components = URLComponents(url: url, resolvingAgainstBaseURL: true)
+      components?.queryItems = queryItems
+      if let finalURL = components?.url {
+        url = finalURL
+      }
+    }
+    
     var request = try URLRequest(url: url, method: method)
     request.headers = HTTPHeaders(headers ?? [:])
     

@@ -9,5 +9,5 @@ import Foundation
 import Combine
 
 public protocol ChatUseCaseProtocol {
-  func sendMessage(placeId: String, chatType: ChatType) async throws -> ChatResponseModel
+  func sendMessage(placeId: String, chatType: ChatType, text: String) async throws -> ChatResponseModel
 }

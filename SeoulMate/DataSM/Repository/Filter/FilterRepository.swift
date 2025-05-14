@@ -36,7 +36,7 @@ final class FilterRepository: FilterRepositoryProtocol {
         }
         
         return self.userService.updateProfile(
-          userName: profile.name,
+          userName: profile.name ?? "",
           birthYear: "2020-08-01",
           companion: data.companion ?? "",
           purposes: data.purposes

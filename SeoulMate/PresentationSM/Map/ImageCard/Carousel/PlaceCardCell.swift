@@ -32,6 +32,7 @@ final class PlaceCardCell: UICollectionViewCell {
   }
   
   func configure(with place: PlaceCardInfo) {
+    Logger.log("PlaceCardCell - 카드 구성: \(place.name)")
     cardView.configure(with: place)
   }
 }

@@ -27,7 +27,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
       GMSPlacesClient.provideAPIKey(apiKey)
     } else {
       // TODO: Alert
-      print("Error: Google Map Api Key 설정 안됨")
+      Logger.log("Error: Google Map Api Key 설정 안됨")
     }
     
     if let clientID = Bundle.main.object(forInfoDictionaryKey: "GOOGLE_LOGIN_CLIENT_ID") as? String {
@@ -37,6 +37,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     } else {
       print("ERROR: Google Login Client ID가 Info.plist에 설정되지 않았습니다")
       // TODO: Alert
+      Logger.log("ERROR: Google Login Client ID가 Info.plist에 설정되지 않았습니다")
     }
     
     return true

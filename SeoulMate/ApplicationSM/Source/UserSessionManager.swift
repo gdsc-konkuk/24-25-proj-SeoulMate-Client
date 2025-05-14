@@ -73,7 +73,7 @@ final class UserSessionManager {
       try keychain.save(accessData, service: keychainService, account: accessTokenKey)
       try keychain.save(refreshData, service: keychainService, account: refreshTokenKey)
     } catch {
-      print("Failed to save tokens: \(error)")
+      Logger.log("Failed to save tokens: \(error)")
     }
   }
   
@@ -100,7 +100,7 @@ final class UserSessionManager {
       try keychain.delete(service: keychainService, account: accessTokenKey)
       try keychain.delete(service: keychainService, account: refreshTokenKey)
     } catch {
-      print("Failed to clear tokens: \(error)")
+      Logger.log("Failed to clear tokens: \(error)")
     }
   }
   

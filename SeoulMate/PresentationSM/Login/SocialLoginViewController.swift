@@ -45,7 +45,7 @@ final class SocialLoginViewController: UIViewController {
     let label = UILabel()
     label.text = "Get started!"
     label.font = .mediumFont(ofSize: 18)
-    label.textColor = .gray400
+    label.textColor = .black
     label.textAlignment = .center
     return label
   }()
@@ -142,7 +142,7 @@ extension SocialLoginViewController {
       guard let self = self else { return }
       
       if let error = error {
-        print("Google 로그인 에러: \(error.localizedDescription)")
+        Logger.log("Google 로그인 에러: \(error.localizedDescription)")
         self.handleLoginError()
         return
       }
@@ -165,7 +165,7 @@ extension SocialLoginViewController {
           return
         }
         
-        print("ID Token: \(idToken)")  // 디버깅을 위해 ID 토큰 출력
+        Logger.log("ID Token: \(idToken)")  // 디버깅을 위해 ID 토큰 출력
         
         // UseCase를 통한 백엔드 로그인
         self.loginUseCase.execute(idToken: idToken)
@@ -175,7 +175,7 @@ extension SocialLoginViewController {
             case .finished:
               break
             case .failure(let error):
-              print("백엔드 로그인 실패: \(error.localizedDescription)")
+              Logger.log("백엔드 로그인 실패: \(error.localizedDescription)")
               // Google Sign-Out 처리
               GIDSignIn.sharedInstance.signOut()
               self.handleLoginError()
@@ -200,10 +200,16 @@ extension SocialLoginViewController {
     UserSessionManager.shared.saveUserId(response.userId)
     
     // 첫 로그인 여부에 따라 화면 이동
-    if response.isFirstLogin {
-      UserSessionManager.shared.navigateToOnboarding()
-    } else {
-      UserSessionManager.shared.navigateToMain()
+//    if response.isFirstLogin {
+//      // SceneDelegate를 통해 온보딩 화면으로 이동
+//      if let sceneDelegate = UIApplication.shared.connectedScenes.first?.delegate as? SceneDelegate {
+//        sceneDelegate.showOnboardingScreen()
+//      }
+//    } else {
+//      UserSessionManager.shared.navigateToMain()
+//    }
+    if let sceneDelegate = UIApplication.shared.connectedScenes.first?.delegate as? SceneDelegate {
+      sceneDelegate.showOnboardingScreen()
     }
   }
   
@@ -215,11 +221,11 @@ extension SocialLoginViewController {
   
   private func showLoginErrorAlert() {
     let alert = UIAlertController(
-      title: "로그인 실패",
-      message: "Google 로그인에 실패했습니다. 다시 시도해주세요.",
+      title: "Login Failed",
+      message: "Google login failed. Please try again.",
       preferredStyle: .alert
     )
-    alert.addAction(UIAlertAction(title: "확인", style: .default))
+    alert.addAction(UIAlertAction(title: "OK", style: .default))
     present(alert, animated: true)
   }
 }

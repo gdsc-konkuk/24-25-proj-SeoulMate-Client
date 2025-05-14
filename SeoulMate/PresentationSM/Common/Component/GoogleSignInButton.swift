@@ -18,7 +18,7 @@ final class GoogleSignInButton: UIButton {
   
   private let titleLabelCustom: UILabel = {
     let label = UILabel()
-    label.font = .systemFont(ofSize: 16, weight: .medium)
+    label.font = .mediumFont(ofSize: 16)
     label.textColor = .black
     label.textAlignment = .center
     return label

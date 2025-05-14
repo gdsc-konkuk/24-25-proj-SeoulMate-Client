@@ -34,10 +34,10 @@ class BaseMessageCell: UITableViewCell {
     contentView.addSubview(messageBubble)
     messageBubble.addSubview(messageLabel)
     contentView.addSubview(timestampLabel)
-    messageLabel.font = .systemFont(ofSize: 16)
+    messageLabel.font = .mediumFont(ofSize: 16)
     messageLabel.numberOfLines = 0
-    timestampLabel.font = .systemFont(ofSize: 12)
-    timestampLabel.textColor = .systemGray
+    timestampLabel.font = .regularFont(ofSize: 12)
+    timestampLabel.textColor = .gray500
     messageLabel.snp.makeConstraints { make in
       make.edges.equalToSuperview().inset(UIEdgeInsets(top: 8, left: 12, bottom: 8, right: 12))
     }

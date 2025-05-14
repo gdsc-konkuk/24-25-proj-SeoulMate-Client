@@ -49,7 +49,7 @@ final class MapViewController: UIViewController {
     let config = UIImage.SymbolConfiguration(pointSize: 18, weight: .medium)
     let locationImage = UIImage(systemName: "location.fill", withConfiguration: config)
     button.setImage(locationImage, for: .normal)
-    button.tintColor = .main500
+    button.tintColor = .gray400
     
     button.addTarget(self, action: #selector(myLocationButtonTapped), for: .touchUpInside)
     return button
@@ -67,7 +67,7 @@ final class MapViewController: UIViewController {
     let config = UIImage.SymbolConfiguration(pointSize: 18, weight: .medium)
     let heartImage = UIImage(systemName: "heart.fill", withConfiguration: config)
     button.setImage(heartImage, for: .normal)
-    button.tintColor = .main500
+    button.tintColor = .red
     
     button.addTarget(self, action: #selector(favoriteButtonTapped), for: .touchUpInside)
     return button
@@ -76,6 +76,12 @@ final class MapViewController: UIViewController {
   private var currentPlaces: [PlaceCardInfo] = []
   private var currentMarkers: [GMSMarker] = []
   var likedPlaceIds: Set<String> = []  // 좋아요한 장소 ID들을 저장할 Set
+  
+  // 현재 위치 표시를 위한 커스텀 마커
+  private var myLocationCircle: GMSCircle?
+  
+  // 최초 위치 확인 플래그
+  private var isFirstLocationUpdate = true
   
   // MARK: - UI Properties
   private let searchContainerView: UIView = {
@@ -161,10 +167,16 @@ final class MapViewController: UIViewController {
     setupUI()
     setupActions()
     setupLocationManager()
-    setupMapView()
     setupPlacesAPI()
     setupMapTapGesture()
     fetchLikedPlaces()  // 좋아요 목록 가져오기
+    
+    // 초기 지도 설정 - 현재 위치가 있으면 현재 위치로, 없으면 건국대학교로
+    if let currentLocation = locationManager.location?.coordinate {
+      setupMapView(at: currentLocation)
+    } else {
+      setupMapView()
+    }
   }
   
   override func viewWillAppear(_ animated: Bool) {
@@ -243,23 +255,49 @@ final class MapViewController: UIViewController {
   
   private func setupLocationManager() {
     locationManager.delegate = self
-    locationManager.desiredAccuracy = kCLLocationAccuracyBest
+    locationManager.desiredAccuracy = kCLLocationAccuracyBestForNavigation
+    locationManager.distanceFilter = 5 // 5미터 이상 이동했을 때만 업데이트
+    locationManager.activityType = .otherNavigation
     
     // 위치 권한 요청
     locationManager.requestWhenInUseAuthorization()
+    
+    // 위치 업데이트 시작
+    locationManager.startUpdatingLocation()
   }
   
-  private func setupMapView() {
-    // 카메라 설정 (건국대학교 중심, 줌 레벨 15)
+  private func setupMapView(at coordinate: CLLocationCoordinate2D? = nil) {
+    // 좌표가 없으면 초기 좌표 사용 (건국대학교)
+    let targetCoordinate = coordinate ?? initialLocation
+    
+    Logger.log("지도 초기화 - 위도: \(targetCoordinate.latitude), 경도: \(targetCoordinate.longitude)")
+    
+    // 카메라 설정
     let camera = GMSCameraPosition.camera(
-      withTarget: initialLocation,
+      withTarget: targetCoordinate,
       zoom: 15
     )
     
     mapView.camera = camera
     mapView.settings.myLocationButton = false  // 기본 내 위치 버튼 제거
+    mapView.isMyLocationEnabled = true        // 내 위치 표시 활성화
     mapView.settings.compassButton = true
     mapView.delegate = self
+    
+    // 현재 위치 원 추가
+    updateLocationCircle(at: targetCoordinate)
+  }
+  
+  private func updateLocationCircle(at coordinate: CLLocationCoordinate2D) {
+    // 기존 원 제거
+    myLocationCircle?.map = nil
+    
+    // 새로운 원 생성
+    myLocationCircle = GMSCircle(position: coordinate, radius: 50)
+    myLocationCircle?.fillColor = UIColor.main500.withAlphaComponent(0.2)
+    myLocationCircle?.strokeColor = UIColor.main500
+    myLocationCircle?.strokeWidth = 2
+    myLocationCircle?.map = mapView
   }
   
   private func setupActions() {
@@ -275,11 +313,20 @@ final class MapViewController: UIViewController {
   private func setupMapTapGesture() {
     let tapGesture = UITapGestureRecognizer(target: self, action: #selector(handleBackgroundTap(_:)))
     tapGesture.cancelsTouchesInView = false // 다른 터치 이벤트도 전달
+    tapGesture.delegate = self
     view.addGestureRecognizer(tapGesture)
   }
   
   @objc private func handleBackgroundTap(_ gesture: UITapGestureRecognizer) {
     let location = gesture.location(in: view)
+    // 키보드 숨기기
+    view.endEditing(true)
+    
+    // 검색 결과 테이블 숨기기
+    if !resultsTableView.isHidden {
+      hideResultsTableView()
+    }
+    
     // 카드뷰가 보이고, 카드뷰 영역 밖을 탭한 경우에만 숨김
     if !placeCardsContainer.isHidden && !placeCardsContainer.frame.contains(location) {
       placeCardsContainer.hide(animated: true)
@@ -321,11 +368,11 @@ final class MapViewController: UIViewController {
         case .finished:
           break
         case .failure(let error):
-          print("즐겨찾기 장소 가져오기 실패: \(error)")
+          Logger.log("즐겨찾기 장소 가져오기 실패: \(error)")
         }
       } receiveValue: { [weak self] response in
         self?.likedPlaceIds = Set(response.placeIds)
-        print("초기 좋아요한 장소들: \(self?.likedPlaceIds ?? [])")
+        Logger.log("초기 좋아요한 장소들: \(self?.likedPlaceIds ?? [])")
       }
       .store(in: &cancellables)
   }
@@ -401,10 +448,33 @@ extension MapViewController {
     if let location = locationManager.location?.coordinate {
       let camera = GMSCameraPosition.camera(withTarget: location, zoom: 15)
       mapView.animate(to: camera)
+      updateLocationCircle(at: location)
     }
   }
   
   @objc private func favoriteButtonTapped() {
+    // 캐러셀이 이미 표시되어 있으면 숨기고 버튼 위치를 원래대로 복원
+    if !placeCardsContainer.isHidden {
+      placeCardsContainer.hide(animated: true)
+      
+      // 버튼 위치 업데이트
+      UIView.animate(withDuration: 0.3) {
+        self.myLocationButton.snp.remakeConstraints { make in
+          make.trailing.equalToSuperview().offset(-24)
+          make.bottom.equalTo(self.view.safeAreaLayoutGuide).offset(-16)
+          make.width.height.equalTo(48)
+        }
+        self.favoriteButton.snp.remakeConstraints { make in
+          make.trailing.equalTo(self.myLocationButton)
+          make.bottom.equalTo(self.myLocationButton.snp.top).offset(-12)
+          make.width.height.equalTo(48)
+        }
+        self.view.layoutIfNeeded()
+      }
+      return
+    }
+    
+    // 캐러셀이 표시되어 있지 않은 경우, 좋아요한 장소들을 가져와서 표시
     getLikedPlacesUseCase.execute()
       .receive(on: DispatchQueue.main)
       .sink { completion in
@@ -412,7 +482,7 @@ extension MapViewController {
         case .finished:
           break
         case .failure(let error):
-          print("즐겨찾기 장소 가져오기 실패: \(error)")
+          Logger.log("즐겨찾기 장소 가져오기 실패: \(error)")
         }
       } receiveValue: { [weak self] response in
         self?.handleLikedPlaces(response)
@@ -424,11 +494,11 @@ extension MapViewController {
     guard !response.placeIds.isEmpty else {
       // 즐겨찾기한 장소가 없는 경우 알림 표시
       let alert = UIAlertController(
-        title: "즐겨찾기",
-        message: "아직 즐겨찾기한 장소가 없습니다.",
+        title: "Favorites",
+        message: "You haven't added any places to favorites yet.",
         preferredStyle: .alert
       )
-      alert.addAction(UIAlertAction(title: "확인", style: .default))
+      alert.addAction(UIAlertAction(title: "OK", style: .default))
       present(alert, animated: true)
       return
     }
@@ -533,27 +603,64 @@ extension MapViewController {
 // MARK: - CLLocationManagerDelegate
 extension MapViewController: CLLocationManagerDelegate {
   func locationManager(_ manager: CLLocationManager, didChangeAuthorization status: CLAuthorizationStatus) {
+    Logger.log("위치 권한 상태 변경: \(status.rawValue)")
+    
     switch status {
     case .authorizedWhenInUse, .authorizedAlways:
+      Logger.log("위치 권한 획득 - 위치 업데이트 시작")
+      mapView.isMyLocationEnabled = true     // 기본 내 위치 표시 활성화
       locationManager.startUpdatingLocation()
-      mapView.isMyLocationEnabled = true
-      mapView.settings.myLocationButton = true
     case .denied, .restricted:
       // 권한이 거부된 경우 처리
       let alert = UIAlertController(
-        title: "위치 권한 필요",
-        message: "내 위치를 표시하려면 위치 권한이 필요합니다. 설정에서 권한을 허용해주세요.",
+        title: "Location Permission Required",
+        message: "Location permission is required to show your location. Please allow it in Settings.",
         preferredStyle: .alert
       )
-      alert.addAction(UIAlertAction(title: "설정으로 이동", style: .default) { _ in
+      alert.addAction(UIAlertAction(title: "Go to Settings", style: .default) { _ in
         if let url = URL(string: UIApplication.openSettingsURLString) {
           UIApplication.shared.open(url)
         }
       })
-      alert.addAction(UIAlertAction(title: "취소", style: .cancel))
+      alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
       present(alert, animated: true)
+      
+      // 위치 권한이 없으면 초기 위치(건국대학교)로 지도 설정
+      setupMapView()
     default:
+      // 아직 결정되지 않은 경우 초기 위치로 설정
+      setupMapView()
       break
+    }
+  }
+  
+  func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
+    guard let location = locations.last else { return }
+    
+    Logger.log("위치 업데이트: \(location.coordinate.latitude), \(location.coordinate.longitude)")
+    
+    // 위치 원 업데이트
+    updateLocationCircle(at: location.coordinate)
+    
+    // 첫 위치 업데이트시에만 지도 초기화 (앱 시작할 때)
+    if isFirstLocationUpdate {
+      Logger.log("첫 위치 업데이트 - 지도 초기화")
+      setupMapView(at: location.coordinate)
+      isFirstLocationUpdate = false
+      
+      // 정확한 위치를 얻었으면 연속 업데이트 중지 및 유의미한 변경시에만 업데이트하도록 설정
+      locationManager.stopUpdatingLocation()
+      locationManager.startMonitoringSignificantLocationChanges()
+    }
+  }
+  
+  func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
+    Logger.log("위치 업데이트 실패: \(error.localizedDescription)")
+    
+    // 위치 가져오기 실패 시 초기 위치(건국대학교)로 설정
+    if isFirstLocationUpdate {
+      setupMapView()
+      isFirstLocationUpdate = false
     }
   }
 }
@@ -561,6 +668,11 @@ extension MapViewController: CLLocationManagerDelegate {
 // MARK: - UITextFieldDelegate
 extension MapViewController: UITextFieldDelegate {
   func textFieldShouldReturn(_ textField: UITextField) -> Bool {
+    guard let text = textField.text, !text.isEmpty else {
+      textField.resignFirstResponder()
+      return true
+    }
+    
     performSearch()
     
     // 검색 결과가 있으면 첫 번째 결과로 자동 이동
@@ -578,13 +690,16 @@ extension MapViewController: UITextFieldDelegate {
     // 텍스트가 비어있으면 결과 테이블 숨기기
     if let text = textField.text, text.isEmpty {
       hideResultsTableView()
+      searchResults.removeAll() // 텍스트가 비어있을 때 검색 결과도 초기화
+    } else {
+      performSearch()
     }
-    performSearch()
   }
   
   func textFieldShouldClear(_ textField: UITextField) -> Bool {
     DispatchQueue.main.async {
       self.hideResultsTableView()
+      self.searchResults.removeAll() // 텍스트필드 클리어 시 검색 결과도 초기화
     }
     return true
   }
@@ -629,6 +744,12 @@ extension MapViewController: UITableViewDelegate, UITableViewDataSource {
 // MARK: - Private Methods
 extension MapViewController {
   private func fetchPlaceDetails(placeID: String) {
+    // 카드 컨테이너 초기화
+    placeCardsContainer.hide(animated: false)
+    
+    // 마커 배열 초기화
+    currentMarkers = []
+    
     placesClient.fetchPlace(
       fromPlaceID: placeID,
       placeFields: [.name, .placeID, .coordinate, .formattedAddress, .rating, .userRatingsTotal, .photos],
@@ -636,26 +757,35 @@ extension MapViewController {
     ) { [weak self] (place, error) in
       guard let self = self else { return }
       
-      if error != nil {
+      if let error = error {
+        Logger.log("장소 상세정보 가져오기 실패: \(error.localizedDescription)")
         return
       }
       
       guard let place = place else {
+        Logger.log("장소 정보가 없습니다.")
         return
       }
       
       // 지도 이동
       self.moveMapToLocation(coordinate: place.coordinate)
       
-      // 마커 추가
+      // 기존 마커 제거
       self.mapView.clear()
-      self.addMarker(at: place.coordinate, title: place.name)
+      
+      // 마커 추가
+      let marker = GMSMarker(position: place.coordinate)
+      marker.title = place.name
+      marker.map = self.mapView
+      self.currentMarkers = [marker]
       
       // 현재 위치 가져오기
       let currentLocation = self.locationManager.location?.coordinate ?? self.initialLocation
       
       // 첫 번째 장소 정보 생성
       let firstPlaceInfo = PlaceCardInfo.from(place: place, currentLocation: currentLocation)
+      
+      Logger.log("첫 번째 장소 정보 생성 완료: \(firstPlaceInfo.name)")
       
       // 추천 장소 가져오기
       self.fetchRecommendedPlaces(coordinate: place.coordinate, firstPlaceInfo: firstPlaceInfo)
@@ -673,7 +803,7 @@ extension MapViewController {
       case .finished:
         break
       case .failure(let error):
-        print("추천 장소 요청 실패: \(error)")
+        Logger.log("추천 장소 요청 실패: \(error)")
       }
     } receiveValue: { [weak self] response in
       self?.handleRecommendedPlaces(response.places, firstPlaceInfo: firstPlaceInfo)
@@ -682,15 +812,15 @@ extension MapViewController {
   }
   
   private func handleRecommendedPlaces(_ places: [RecommendedPlace], firstPlaceInfo: PlaceCardInfo) {
-    print("서버에서 받은 추천 장소 수: \(places.count)")
-    print("첫 번째 장소: \(firstPlaceInfo.name)")
+    Logger.log("서버에서 받은 추천 장소 수: \(places.count)")
+    Logger.log("첫 번째 장소: \(firstPlaceInfo.name)")
     for (index, place) in places.enumerated() {
-      print("추천 장소 \(index + 1): \(place.placeId)")
+      Logger.log("추천 장소 \(index + 1): \(place.placeId)")
     }
     
     // 모든 장소 정보를 한번에 가져오기 위한 그룹
     let group = DispatchGroup()
-    var recommendedPlaceInfos: [PlaceCardInfo] = []
+    var recommendedPlaceInfos: [PlaceCardInfo] = Array(repeating: PlaceCardInfo(placeID: "", name: "", address: "", distance: 0, rating: nil, ratingCount: nil, description: nil), count: places.count)
     var recommendedMarkers: [GMSMarker] = []
     
     // 각 추천 장소에 대해 구글 Places API로 상세 정보를 가져옵니다
@@ -706,14 +836,17 @@ extension MapViewController {
         
         guard let self = self,
               let googlePlace = googlePlace,
-              error == nil else { return }
+              error == nil else { 
+          Logger.log("구글 장소 정보 가져오기 실패: \(error?.localizedDescription ?? "알 수 없는 오류")")
+          return 
+        }
         
         // 현재 위치 가져오기
         let currentLocation = self.locationManager.location?.coordinate ?? self.initialLocation
         
         // PlaceCardInfo 생성
-        var description = place.description
         var placeInfo = PlaceCardInfo.from(place: googlePlace, currentLocation: currentLocation)
+        
         // RecommendedPlace의 description으로 업데이트
         placeInfo = PlaceCardInfo(
           placeID: placeInfo.placeID,
@@ -722,7 +855,7 @@ extension MapViewController {
           distance: placeInfo.distance,
           rating: placeInfo.rating,
           ratingCount: placeInfo.ratingCount,
-          description: description
+          description: place.description
         )
         
         // 마커 생성
@@ -730,19 +863,11 @@ extension MapViewController {
         marker.title = googlePlace.name
         marker.map = self.mapView
         
-        // 배열에 추가 (순서 보장)
+        // 배열에 추가
         DispatchQueue.main.async {
-          // 배열의 크기가 index보다 작으면 nil로 채움
-          while recommendedPlaceInfos.count <= index {
-            recommendedPlaceInfos.append(placeInfo)
-          }
-          while recommendedMarkers.count <= index {
-            recommendedMarkers.append(marker)
-          }
-          
-          // 해당 인덱스에 정보 저장
           recommendedPlaceInfos[index] = placeInfo
-          recommendedMarkers[index] = marker
+          recommendedMarkers.append(marker)
+          Logger.log("Added place at index \(index): \(placeInfo.name)")
         }
       }
     }
@@ -751,23 +876,31 @@ extension MapViewController {
     group.notify(queue: .main) { [weak self] in
       guard let self = self else { return }
       
-      print("처리된 추천 장소 수: \(recommendedPlaceInfos.count)")
+      // 유효한 장소 정보만 필터링
+      let validPlaceInfos = recommendedPlaceInfos.filter { $0.placeID != "" }
+      Logger.log("처리된 추천 장소 수: \(validPlaceInfos.count)")
       
       // 첫 번째 장소와 추천 장소들을 합침
-      self.currentPlaces = [firstPlaceInfo] + recommendedPlaceInfos
-      print("최종 장소 수 (첫 번째 장소 + 추천 장소): \(self.currentPlaces.count)")
+      self.currentPlaces = [firstPlaceInfo] + validPlaceInfos
+      Logger.log("최종 장소 수 (첫 번째 장소 + 추천 장소): \(self.currentPlaces.count)")
       
-      // 첫 번째 마커가 있는 경우에만 추가
+      // 마커 처리
       if let firstMarker = self.currentMarkers.first {
         self.currentMarkers = [firstMarker] + recommendedMarkers
       } else {
-        self.currentMarkers = recommendedMarkers
+        let firstMarker = GMSMarker(position: CLLocationCoordinate2D(latitude: 0, longitude: 0))
+        firstMarker.title = firstPlaceInfo.name
+        firstMarker.map = self.mapView
+        self.currentMarkers = [firstMarker] + recommendedMarkers
       }
       
-      // 카드뷰 업데이트
-      self.placeCardsContainer.configure(with: self.currentPlaces)
-      self.placeCardsContainer.show(animated: true)
-      self.placeCardsContainer.scrollToIndex(0, animated: false)
+      // 카드뷰 업데이트 (먼저 hide 했다가 다시 show)
+      self.placeCardsContainer.hide(animated: false)
+      DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+        self.placeCardsContainer.configure(with: self.currentPlaces)
+        self.placeCardsContainer.show(animated: true)
+        self.placeCardsContainer.scrollToIndex(0, animated: false)
+      }
       
       // 내 위치 버튼 위치 업데이트
       UIView.animate(withDuration: 0.3) {
@@ -813,10 +946,8 @@ extension MapViewController {
 
 extension MapViewController: FilterDelegate {
   func didApplyFilter(_ filterData: FilterData) {
-    print("Selected companion: \(filterData.companion ?? "None")")
-    print("Selected purposes: \(filterData.purposes)")
-    
-    // TODO: 필터에 따른 지도 업데이트
+    Logger.log("Selected companion: \(filterData.companion ?? "None")")
+    Logger.log("Selected purposes: \(filterData.purposes)")
   }
 }
 
@@ -887,13 +1018,21 @@ extension MapViewController: PlaceDetailViewControllerDelegate {
     } else {
       likedPlaceIds.remove(placeId)
     }
-    print("현재 좋아요한 장소들: \(likedPlaceIds)")
+    Logger.log("현재 좋아요한 장소들: \(likedPlaceIds)")
   }
 }
 
 // MARK: - Google Maps Delegate
 extension MapViewController: GMSMapViewDelegate {
   func mapView(_ mapView: GMSMapView, didTapAt coordinate: CLLocationCoordinate2D) {
+    // 키보드 숨기기
+    view.endEditing(true)
+    
+    // 검색 결과 테이블 숨기기
+    if !resultsTableView.isHidden {
+      hideResultsTableView()
+    }
+    
     if !placeCardsContainer.isHidden {
       placeCardsContainer.hide(animated: true)
       
@@ -916,6 +1055,14 @@ extension MapViewController: GMSMapViewDelegate {
   
   // ★ POI(장소) 클릭 시 카드뷰 띄우기
   func mapView(_ mapView: GMSMapView, didTapPOIWithPlaceID placeID: String, name: String, location: CLLocationCoordinate2D) {
+    // 키보드 숨기기
+    view.endEditing(true)
+    
+    // 검색 결과 테이블 숨기기
+    if !resultsTableView.isHidden {
+      hideResultsTableView()
+    }
+    
     // POI의 상세 정보를 가져와서 카드뷰를 띄움
     placesClient.fetchPlace(
       fromPlaceID: placeID,
@@ -948,5 +1095,13 @@ extension MapViewController: GMSMapViewDelegate {
       // 추천 장소 가져오기
       self.fetchRecommendedPlaces(coordinate: place.coordinate, firstPlaceInfo: firstPlaceInfo)
     }
+  }
+}
+
+// MARK: - UIGestureRecognizerDelegate
+extension MapViewController: UIGestureRecognizerDelegate {
+  func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldRecognizeSimultaneouslyWith otherGestureRecognizer: UIGestureRecognizer) -> Bool {
+    // 여러 제스처 인식기가 동시에 동작할 수 있도록 허용
+    return true
   }
 }
