@@ -104,6 +104,7 @@ final class MapViewController: UIViewController {
     tableView.isHidden = true
     tableView.separatorStyle = .singleLine
     tableView.separatorInset = UIEdgeInsets(top: 0, left: 82, bottom: 0, right: 0)
+    tableView.isUserInteractionEnabled = true // 명시적으로 사용자 상호작용 활성화
     return tableView
   }()
   
@@ -192,10 +193,12 @@ final class MapViewController: UIViewController {
     searchContainerView.addSubview(searchButton)
     searchContainerView.addSubview(textField)
     view.addSubview(filterButton)
-    view.addSubview(resultsTableView)
     view.addSubview(placeCardsContainer)
     view.addSubview(myLocationButton)
     view.addSubview(favoriteButton)
+    
+    // 테이블 뷰를 마지막에 추가하여 z-index가 가장 높게 설정
+    view.addSubview(resultsTableView)
     
     mapView.snp.makeConstraints { make in
       make.edges.equalToSuperview()
@@ -304,6 +307,9 @@ final class MapViewController: UIViewController {
     searchButton.addTarget(self, action: #selector(searchButtonTapped), for: .touchUpInside)
     filterButton.addTarget(self, action: #selector(filterButtonTapped), for: .touchUpInside)
     textField.delegate = self
+    
+    // 텍스트 필드의 editingChanged 이벤트 추가
+    textField.addTarget(self, action: #selector(textFieldDidChange), for: .editingChanged)
   }
   
   private func setupPlacesAPI() {
@@ -314,15 +320,21 @@ final class MapViewController: UIViewController {
     let tapGesture = UITapGestureRecognizer(target: self, action: #selector(handleBackgroundTap(_:)))
     tapGesture.cancelsTouchesInView = false // 다른 터치 이벤트도 전달
     tapGesture.delegate = self
-    view.addGestureRecognizer(tapGesture)
+    mapView.addGestureRecognizer(tapGesture) // view 대신 mapView에 제스처 추가
   }
   
   @objc private func handleBackgroundTap(_ gesture: UITapGestureRecognizer) {
     let location = gesture.location(in: view)
+    
+    // 검색 결과 테이블이 보이고 있는 상태에서 테이블 뷰 영역을 탭한 경우에는 아무 동작 안 함
+    if !resultsTableView.isHidden && resultsTableView.frame.contains(location) {
+      return
+    }
+    
     // 키보드 숨기기
     view.endEditing(true)
     
-    // 검색 결과 테이블 숨기기
+    // 검색 결과 테이블 숨기기 (테이블 뷰 영역 외부를 탭한 경우)
     if !resultsTableView.isHidden {
       hideResultsTableView()
     }
@@ -339,6 +351,7 @@ final class MapViewController: UIViewController {
       
       UIView.animate(withDuration: 0.3) {
         self.resultsTableView.isHidden = false
+        self.resultsTableView.isUserInteractionEnabled = true // 애니메이션 중에도 사용자 상호작용 보장
         self.resultsTableView.snp.updateConstraints { make in
           // 최대 5개 결과만 표시 (또는 결과 개수에 따라 조정)
           let height = min(self.searchResults.count, 5) * 44
@@ -350,13 +363,16 @@ final class MapViewController: UIViewController {
   }
   
   private func hideResultsTableView() {
-    UIView.animate(withDuration: 0.3) {
+    // 테이블을 즉시 숨기기 위해 애니메이션 시간을 0.1초로 단축
+    UIView.animate(withDuration: 0.1) {
       self.resultsTableView.snp.updateConstraints { make in
         make.height.equalTo(0)
       }
       self.view.layoutIfNeeded()
     } completion: { _ in
       self.resultsTableView.isHidden = true
+      // 확실하게 검색 결과 초기화
+      self.searchResults.removeAll()
     }
   }
   
@@ -386,7 +402,12 @@ extension MapViewController {
   }
   
   private func performSearch() {
-    guard let searchText = textField.text, !searchText.isEmpty else { return }
+    guard let searchText = textField.text, !searchText.isEmpty else { 
+      // 검색어가 비어있으면 테이블 숨기기
+      hideResultsTableView()
+      searchResults.removeAll()
+      return 
+    }
     
     // Places API를 사용하여 자동 완성 요청
     let filter = GMSAutocompleteFilter()
@@ -408,9 +429,14 @@ extension MapViewController {
         return
       }
       
-      // 결과 저장 및 테이블뷰 표시
-      self.searchResults = predictions
-      self.showResultsTableView()
+      // 검색어가 여전히 비어있지 않은 경우에만 결과 표시
+      if let currentText = self.textField.text, !currentText.isEmpty {
+        // 결과 저장 및 테이블뷰 표시
+        self.searchResults = predictions
+        self.showResultsTableView()
+      } else {
+        self.hideResultsTableView()
+      }
     }
   }
   
@@ -687,20 +713,29 @@ extension MapViewController: UITextFieldDelegate {
   }
   
   func textFieldDidChangeSelection(_ textField: UITextField) {
-    // 텍스트가 비어있으면 결과 테이블 숨기기
+    // 텍스트가 비어있으면 결과 테이블 즉시 숨기기
     if let text = textField.text, text.isEmpty {
       hideResultsTableView()
       searchResults.removeAll() // 텍스트가 비어있을 때 검색 결과도 초기화
-    } else {
+      return
+    }
+    
+    // 텍스트가 있을 때만 검색 실행
+    if let text = textField.text, !text.isEmpty {
       performSearch()
     }
   }
   
   func textFieldShouldClear(_ textField: UITextField) -> Bool {
+    // 클리어 버튼 클릭 시 즉시 결과 테이블 숨김 처리
+    hideResultsTableView()
+    searchResults.removeAll()
+    
+    // 다음 runloop까지 검색 실행 방지
     DispatchQueue.main.async {
       self.hideResultsTableView()
-      self.searchResults.removeAll() // 텍스트필드 클리어 시 검색 결과도 초기화
     }
+    
     return true
   }
 }
@@ -721,6 +756,10 @@ extension MapViewController: UITableViewDelegate, UITableViewDataSource {
     
     cell.configure(with: placeName)
     
+    // 명시적으로 셀을 선택 가능하게 설정
+    cell.selectionStyle = .default
+    cell.isUserInteractionEnabled = true
+    
     return cell
   }
   
@@ -729,21 +768,27 @@ extension MapViewController: UITableViewDelegate, UITableViewDataSource {
   }
   
   func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
+    Logger.log("테이블 셀 선택됨: \(indexPath.row)")
+    
     let selectedPlace = searchResults[indexPath.row]
     textField.text = selectedPlace.attributedPrimaryText.string
     
-    // TODO: 상세 정보 가져오기
-    fetchPlaceDetails(placeID: selectedPlace.placeID)
-    
-    // 테이블 숨기기 및 키보드 내리기
-    hideResultsTableView()
+    // Hide keyboard
     textField.resignFirstResponder()
+    
+    // Fetch place details without hiding results table yet
+    fetchPlaceDetails(placeID: selectedPlace.placeID, shouldHideResultsTable: true)
+  }
+  
+  func tableView(_ tableView: UITableView, willSelectRowAt indexPath: IndexPath) -> IndexPath? {
+    Logger.log("테이블 셀 선택 예정: \(indexPath.row)")
+    return indexPath
   }
 }
 
 // MARK: - Private Methods
 extension MapViewController {
-  private func fetchPlaceDetails(placeID: String) {
+  private func fetchPlaceDetails(placeID: String, shouldHideResultsTable: Bool = false) {
     // 카드 컨테이너 초기화
     placeCardsContainer.hide(animated: false)
     
@@ -756,6 +801,13 @@ extension MapViewController {
       sessionToken: nil
     ) { [weak self] (place, error) in
       guard let self = self else { return }
+      
+      // Hide results table if needed
+      if shouldHideResultsTable {
+        DispatchQueue.main.async {
+          self.hideResultsTableView()
+        }
+      }
       
       if let error = error {
         Logger.log("장소 상세정보 가져오기 실패: \(error.localizedDescription)")
@@ -1103,5 +1155,25 @@ extension MapViewController: UIGestureRecognizerDelegate {
   func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldRecognizeSimultaneouslyWith otherGestureRecognizer: UIGestureRecognizer) -> Bool {
     // 여러 제스처 인식기가 동시에 동작할 수 있도록 허용
     return true
+  }
+  
+  func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldReceive touch: UITouch) -> Bool {
+    // 터치 위치가 테이블 뷰 안에 있으면 이 제스처 인식기는 무시
+    let touchPoint = touch.location(in: view)
+    if !resultsTableView.isHidden && resultsTableView.frame.contains(touchPoint) {
+      return false
+    }
+    return true
+  }
+}
+
+// MARK: - Text Field Change Handling
+extension MapViewController {
+  @objc private func textFieldDidChange(_ textField: UITextField) {
+    if let text = textField.text, text.isEmpty {
+      // 텍스트가 비어있으면 즉시 테이블 숨기기
+      hideResultsTableView()
+      searchResults.removeAll()
+    }
   }
 }

@@ -25,10 +25,9 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
     
     window = UIWindow(windowScene: windowScene)
     
-    // MARK: 백엔드 서버 구현시
     if UserSessionManager.shared.isLoggedIn {
       // showLoginScreen()
-      showMainTabBar()
+       showMainTabBar()
     } else {
       showLoginScreen()
     }
