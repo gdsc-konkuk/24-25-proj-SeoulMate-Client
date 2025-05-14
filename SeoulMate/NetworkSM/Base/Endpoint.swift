@@ -25,7 +25,7 @@ extension Endpoint {
   }
   
   var requiresAuth: Bool {
-    return true // 기본적으로 인증이 필요하다고 가정
+    return true
   }
   
   var headers: [String: String]? {

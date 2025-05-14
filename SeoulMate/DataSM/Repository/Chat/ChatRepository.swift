@@ -8,6 +8,7 @@
 import Foundation
 
 final class ChatRepository: ChatRepositoryProtocol {
+  
   private let chatService: ChatServiceProtocol
   
   init(chatService: ChatServiceProtocol) {

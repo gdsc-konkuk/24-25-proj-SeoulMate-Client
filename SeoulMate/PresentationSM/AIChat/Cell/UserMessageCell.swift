@@ -33,7 +33,6 @@ final class UserMessageCell: BaseMessageCell {
       make.top.equalTo(messageBubble.snp.top).offset(20)
     }
     
-    // Store corners for layoutSubviews
     bubbleCorners = ([.topLeft, .bottomLeft, .bottomRight], 16)
     setNeedsLayout()
   }
