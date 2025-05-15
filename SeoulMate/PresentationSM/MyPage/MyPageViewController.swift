@@ -382,13 +382,13 @@ final class MyPageViewController: UIViewController, UICollectionViewDataSource, 
   
   @objc private func logoutButtonTapped() {
     let alert = UIAlertController(
-      title: "로그아웃",
-      message: "정말 로그아웃 하시겠습니까?",
+      title: "Logout",
+      message: "Are you sure you want to log out?",
       preferredStyle: .alert
     )
     
-    let cancelAction = UIAlertAction(title: "취소", style: .cancel)
-    let logoutAction = UIAlertAction(title: "로그아웃", style: .destructive) { [weak self] _ in
+    let cancelAction = UIAlertAction(title: "Cancel", style: .cancel)
+    let logoutAction = UIAlertAction(title: "Logout", style: .destructive) { [weak self] _ in
       self?.performLogout()
     }
     

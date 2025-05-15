@@ -180,6 +180,8 @@ final class PlaceDetailView: UIView {
     
     // 5. 장소명
     nameLabel.font = .boldFont(ofSize: 20)
+    nameLabel.numberOfLines = 0
+    nameLabel.lineBreakMode = .byTruncatingTail
     nameLabel.snp.makeConstraints { make in
       make.top.equalTo(tagStackView.snp.bottom).offset(8)
       make.left.equalToSuperview().offset(16)

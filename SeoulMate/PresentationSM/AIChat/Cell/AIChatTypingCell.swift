@@ -18,14 +18,13 @@ final class AIChatTypingCell: UITableViewCell {
     imageView.contentMode = .scaleAspectFill
     imageView.layer.cornerRadius = 20
     imageView.clipsToBounds = true
-    imageView.backgroundColor = .systemGray5
     return imageView
   }()
   
   private let typingBubble: UIView = {
     let view = UIView()
     view.layer.cornerRadius = 16
-    view.backgroundColor = .main500
+    view.backgroundColor = .white
     return view
   }()
   
@@ -79,7 +78,7 @@ final class AIChatTypingCell: UITableViewCell {
     // Create three dots
     for _ in 0..<3 {
       let dot = UIView()
-      dot.backgroundColor = .systemGray
+      dot.backgroundColor = .main500
       dot.layer.cornerRadius = 4
       dot.snp.makeConstraints { make in
         make.width.height.equalTo(8)

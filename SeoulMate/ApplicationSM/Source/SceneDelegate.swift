@@ -17,20 +17,21 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
   func scene(_ scene: UIScene, willConnectTo session: UISceneSession, options connectionOptions: UIScene.ConnectionOptions) {
     guard let windowScene = (scene as? UIWindowScene) else { return }
     
-    // Create AppDIContainer
     appDIContainer = AppDIContainer()
     
-    // UserSessionManager에 AppDIContainer 설정
     UserSessionManager.shared.appDIContainer = appDIContainer
     
     window = UIWindow(windowScene: windowScene)
     
-    if UserSessionManager.shared.isLoggedIn {
-      // showLoginScreen()
-      showMainTabBar()
-    } else {
-      showLoginScreen()
-    }
+    // TODO: 시연을 위해
+    showLoginScreen()
+    // TODO: Fix UserSession Manager
+//    if UserSessionManager.shared.isLoggedIn {
+//      showLoginScreen()
+//      // showMainTabBar()
+//    } else {
+//      showLoginScreen()
+//    }
     
     window?.makeKeyAndVisible()
   }
