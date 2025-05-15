@@ -10,7 +10,7 @@
   
   **Experience Seoul Easier and More Enjoyably**
   
-  [![iOS](https://img.shields.io/badge/iOS-15.0%2B-blue.svg)](https://www.apple.com/ios/)
+  [![iOS](https://img.shields.io/badge/iOS-16.0%2B-blue.svg)](https://www.apple.com/ios/)
   [![Swift](https://img.shields.io/badge/Swift-5.9-orange.svg)](https://swift.org)
   [![Xcode](https://img.shields.io/badge/Xcode-16%2B-blue.svg)](https://developer.apple.com/xcode/)  
   <br>
