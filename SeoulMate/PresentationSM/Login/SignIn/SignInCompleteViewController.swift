@@ -169,7 +169,7 @@ extension SignInCompleteViewController {
   }
   
   @objc private func nextButtonTapped() {
-    // 온보딩 완료 처리 및 메인 화면으로 이동
+    // 온보 딩 완료 처리 및 메인 화면으로 이동
     UserSessionManager.shared.completeOnboardingAndNavigateToMain()
   }
 }

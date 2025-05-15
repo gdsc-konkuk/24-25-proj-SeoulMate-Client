@@ -27,7 +27,7 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
     
     if UserSessionManager.shared.isLoggedIn {
       // showLoginScreen()
-       showMainTabBar()
+      showMainTabBar()
     } else {
       showLoginScreen()
     }

@@ -23,10 +23,10 @@ final class BotMessageCell: BaseMessageCell {
   
   private let profileImageView: UIImageView = {
     let imageView = UIImageView()
+    imageView.image = UIImage(named: "Icon")
     imageView.contentMode = .scaleAspectFill
     imageView.layer.cornerRadius = 20
     imageView.clipsToBounds = true
-    imageView.backgroundColor = .systemGray5
     return imageView
   }()
   

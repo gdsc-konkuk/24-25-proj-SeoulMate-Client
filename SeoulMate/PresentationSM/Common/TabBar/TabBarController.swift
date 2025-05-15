@@ -98,10 +98,12 @@ final class TabBarController: UIViewController {
   
   private let centerButton: UIButton = {
     let button = UIButton()
-    button.backgroundColor = .systemBlue
+    button.backgroundColor = .main500
     button.tintColor = .white
     button.layer.cornerRadius = 37.5
-    button.setImage(UIImage(systemName: "message.fill"), for: .normal)
+    
+    let image = UIImage(systemName: "circle.fill")?.withConfiguration(UIImage.SymbolConfiguration(pointSize: 31))
+    button.setImage(image, for: .normal)
     button.layer.shadowColor = UIColor.black.cgColor
     button.layer.shadowOffset = CGSize(width: 0, height: 2)
     button.layer.shadowOpacity = 0.2
@@ -193,7 +195,6 @@ extension TabBarController {
     
     // Update selected state
     mapTabItem.isSelected = (tab == .map)
-    centerButton.backgroundColor = tab == .aiChat ? .systemBlue : .systemGray
     myPageTabItem.isSelected = (tab == .myPage)
     
     // Remove current view controller from view

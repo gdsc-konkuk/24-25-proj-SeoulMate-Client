@@ -25,7 +25,7 @@ final class AIChatTypingCell: UITableViewCell {
   private let typingBubble: UIView = {
     let view = UIView()
     view.layer.cornerRadius = 16
-    view.backgroundColor = .systemGray6
+    view.backgroundColor = .main500
     return view
   }()
   
