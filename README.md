@@ -100,3 +100,9 @@ The project follows Clean Architecture principles with a clear separation of con
 - **Application Layer**: Coordinates app components and manages dependencies
 
 ## Demonstration video
+
+| Title | Login Flow + Main Screen | Search | Place Recommendations | My Page |
+|-------|--------------------------|--------|------------------------|---------|
+| Video | <video src="https://github.com/user-attachments/assets/da77c505-965b-488d-af23-6bc91f7b8bbd" width="300" controls></video> | <video src="https://github.com/user-attachments/assets/f01055db-0cbc-49d2-846c-119e640df7a7" width="300" controls></video> | <video src="https://github.com/user-attachments/assets/4aebae42-ce65-46bf-8163-679a11e86c68" width="300" controls></video> | <video src="https://github.com/user-attachments/assets/508c57d8-7e13-432f-b332-832c994bc7f5" width="300" controls></video> |
+
+
