@@ -50,11 +50,6 @@
 			path = SeoulMate;
 			sourceTree = "<group>";
 		};
-		804CEFCA2D9564760050AE28 /* SeoulMateTests */ = {
-			isa = PBXFileSystemSynchronizedRootGroup;
-			path = SeoulMateTests;
-			sourceTree = "<group>";
-		};
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -86,7 +81,6 @@
 			isa = PBXGroup;
 			children = (
 				804CEFB32D9564740050AE28 /* SeoulMate */,
-				804CEFCA2D9564760050AE28 /* SeoulMateTests */,
 				804CEFB22D9564740050AE28 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -144,9 +138,6 @@
 			);
 			dependencies = (
 				804CEFC92D9564760050AE28 /* PBXTargetDependency */,
-			);
-			fileSystemSynchronizedGroups = (
-				804CEFCA2D9564760050AE28 /* SeoulMateTests */,
 			);
 			name = SeoulMateTests;
 			packageProductDependencies = (
